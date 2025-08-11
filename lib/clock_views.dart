@@ -12,14 +12,14 @@ class ClockViews extends StatefulWidget {
 }
 
 class _ClockViewsState extends State<ClockViews> {
-  Timer? _timer; // เพิ่ม nullable Timer
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    // เริ่มต้น timer และเก็บ reference ไว้
+    // เพิ่ม Timer เพื่อให้นาฬิกาเคลื่อนไหว
     _timer = Timer.periodic(Duration(seconds: 1), (timer) {
-      if (mounted) { // ตรวจสอบว่า widget ยังอยู่หรือไม่
+      if (mounted) {
         setState(() {});
       }
     });
@@ -27,11 +27,10 @@ class _ClockViewsState extends State<ClockViews> {
 
   @override
   void dispose() {
-    // ยกเลิก timer เมื่อ widget ถูกทำลาย
     _timer?.cancel();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Align(
@@ -66,17 +65,17 @@ class ClockPainter extends CustomPainter {
     var outlineBrush = Paint()
       ..color = Color(0XFFEAECFF)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 16;
+      ..strokeWidth = size.width / 20;
 
-    // ค่าจุดกลางของนาฬิกา
-    var centerFillBrush = Paint()..color = Color(0XFFEAECFF);
+    // ค่าจุดกลางของนาฬิกา (เปลี่ยนชื่อจาก centerFillBrush เป็น centerDotBrush)
+    var centerDotBrush = Paint()..color = Color(0XFFEAECFF);
 
     // ค่าเวลาเข็มยาววินาที
     var secHandBrush = Paint()
       ..color = Colors.orange
-      ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 8;
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = size.width / 60;
 
     // ค่าเวลาเข็มกลางนาที
     var minHandBrush = Paint()
@@ -85,7 +84,7 @@ class ClockPainter extends CustomPainter {
       ).createShader(Rect.fromCircle(center: center, radius: radius))
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
-      ..strokeWidth = 12;
+      ..strokeWidth = size.width / 30;
 
     // ค่าเวลาเข็มสั้นชั่วโมง
     var hourHandBrush = Paint()
@@ -94,66 +93,46 @@ class ClockPainter extends CustomPainter {
       ).createShader(Rect.fromCircle(center: center, radius: radius))
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
-      ..strokeWidth = 16;
+      ..strokeWidth = size.width / 24;
 
     // สร้าง dashBrush สำหรับเส้นปกติ
     var dashBrush = Paint()
       ..color = Color(0XFFEAECFF)
       ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = 1.5;
+      ..strokeWidth = 1;
 
-    // สร้าง majorTickBrush สำหรับเส้นทุก 5 นาที (เด่นกว่า)
-    var majorTickBrush = Paint()
-      ..color = Color(0XFFEAECFF)
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = 2.5;
+    // วาดวงกลมพื้นหลังและเส้นขอบ
+    canvas.drawCircle(center, radius * 0.75, fillBrush);
+    canvas.drawCircle(center, radius * 0.75, outlineBrush);
 
-    canvas.drawCircle(center, radius - 40, fillBrush);
-    canvas.drawCircle(center, radius - 40, outlineBrush);
-
-    //สร้างจุดบอกเวลา
-    var secHandX = centerX + 60 * cos(dateTime.second * 6 * pi / 180);
-    var secHandY = centerX + 60 * sin(dateTime.second * 6 * pi / 180);
-    canvas.drawLine(center, Offset(secHandX, secHandY), secHandBrush);
-
-    //สร้างจุดบอกเวลา
-    var minHandX = centerX + 80 * cos(dateTime.minute * 6 * pi / 180);
-    var minHandY = centerX + 80 * sin(dateTime.minute * 6 * pi / 180);
-    canvas.drawLine(center, Offset(minHandX, minHandY), minHandBrush);
-
-    //สร้างจุดบอกเวลา
-    var hourHandX =
-        centerX +
-        80 * cos((dateTime.hour % 12) * 30 + dateTime.minute * 0.5) * pi / 180;
-    var hourHandY =
-        centerX +
-        80 * sin((dateTime.hour % 12) * 30 + dateTime.minute * 0.5) * pi / 180;
+    //เข็มชั่วโมง - แก้ไขการคำนวณ
+    var hourAngle = (dateTime.hour % 12) * 30 + dateTime.minute * 0.5;
+    var hourHandX = centerX + radius * 0.4 * cos(hourAngle * pi / 180);
+    var hourHandY = centerY + radius * 0.4 * sin(hourAngle * pi / 180);
     canvas.drawLine(center, Offset(hourHandX, hourHandY), hourHandBrush);
 
-    canvas.drawCircle(center, 16, centerFillBrush);
+    //เข็มนาที - แก้ไข centerY
+    var minHandX = centerX + radius * 0.6 * cos(dateTime.minute * 6 * pi / 180);
+    var minHandY = centerY + radius * 0.6 * sin(dateTime.minute * 6 * pi / 180);
+    canvas.drawLine(center, Offset(minHandX, minHandY), minHandBrush);
 
-    // สร้างเส้นขอบนาฬิกา
-    var tickInnerRadius = radius - 24;
-    var tickOutRadius = radius - 18;
-    var majorTickInnerRadius = radius - 24;
-    var majorTickOutRadius = radius - 15;
+    //เข็มวินาที - แก้ไข centerY
+    var secHandX = centerX + radius * 0.6 * cos(dateTime.second * 6 * pi / 180);
+    var secHandY = centerY + radius * 0.6 * sin(dateTime.second * 6 * pi / 180);
+    canvas.drawLine(center, Offset(secHandX, secHandY), secHandBrush);
 
-    for (double i = 0; i < 360; i += 3) {
-      if (i % 30 == 0) {
-        var x1 = centerX + majorTickInnerRadius * cos(i * pi / 180);
-        var y1 = centerY + majorTickInnerRadius * sin(i * pi / 180);
-        var x2 = centerX + majorTickOutRadius * cos(i * pi / 180);
-        var y2 = centerY + majorTickOutRadius * sin(i * pi / 180);
-        canvas.drawLine(Offset(x1, y1), Offset(x2, y2), majorTickBrush);
-      } else {
-        var x1 = centerX + tickInnerRadius * cos(i * pi / 180);
-        var y1 = centerY + tickInnerRadius * sin(i * pi / 180);
-        var x2 = centerX + tickOutRadius * cos(i * pi / 180);
-        var y2 = centerY + tickOutRadius * sin(i * pi / 180);
-        canvas.drawLine(Offset(x1, y1), Offset(x2, y2), dashBrush);
-      }
+    // วาดจุดกลาง
+    canvas.drawCircle(center, radius * 0.12, centerDotBrush);
+
+    // วาดเส้นขีดบอกเวลา - แก้ไขการคำนวณ
+    var outerRadius = radius * 0.75;
+    var innerRadius = radius * 0.65;
+    for (var i = 0; i < 360; i += 30) { // เปลี่ยนจาก 12 เป็น 30 เพื่อให้ได้ 12 เส้น
+      var x1 = centerX + outerRadius * cos(i * pi / 180);
+      var y1 = centerY + outerRadius * sin(i * pi / 180);
+      var x2 = centerX + innerRadius * cos(i * pi / 180);
+      var y2 = centerY + innerRadius * sin(i * pi / 180);
+      canvas.drawLine(Offset(x1, y1), Offset(x2, y2), dashBrush);
     }
   }
 

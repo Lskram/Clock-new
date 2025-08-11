@@ -10,14 +10,10 @@ class Homepage extends StatelessWidget {
     var now = DateTime.now();
     var formattedTime = DateFormat('HH:mm').format(now);
     var formattedDate = DateFormat('EEE, d MMM').format(now);
-
-    // แก้ไข logic การคำนวณ timezone offset
-    var offsetInHours = now.timeZoneOffset.inHours;
-    var offsetInMinutes = now.timeZoneOffset.inMinutes.remainder(60).abs();
-    var offsetSign = offsetInHours >= 0 ? '+' : '';
-    var timezoneString = offsetInMinutes == 0
-        ? '$offsetInHours'
-        : '$offsetInHours:${offsetInMinutes.toString().padLeft(2, '0')}';
+    var timezoneString = now.timeZoneOffset.toString().split('.').first;
+    var offsetSign = '';
+    if (!timezoneString.startsWith('-')) offsetSign = '+';
+    // Removed print statement for production code
 
     return Scaffold(
       backgroundColor: Color(0xFF2D2F41),
@@ -47,9 +43,10 @@ class Homepage extends StatelessWidget {
                     flex: 1,
                     fit: FlexFit.tight,
                     child: Text(
-                      'Clock', // ลบ parentheses ที่ไม่จำเป็น
+                      'Clock',
                       style: TextStyle(
                         fontFamily: 'avenir',
+                        fontWeight: FontWeight.w700,
                         color: Colors.white,
                         fontSize: 24,
                       ),
@@ -69,23 +66,27 @@ class Homepage extends StatelessWidget {
                           ),
                         ),
                         Text(
-                      formattedDate,
-                      style: TextStyle(
-                        fontFamily: 'avenir',
-                        color: Colors.white,
-                        fontSize: 20,
-                      ),
-                    ),
+                          formattedDate,
+                          style: TextStyle(
+                            fontFamily: 'avenir',
+                            fontWeight: FontWeight.w300,
+                            color: Colors.white,
+                            fontSize: 20,
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                  
+
                   Flexible(
-                    flex: 4,fit:FlexFit.tight,
-                    child:  Align(
+                    flex: 4,
+                    fit: FlexFit.tight,
+                    child: Align(
                       alignment: Alignment.center,
-                      child: ClockViews(size: 250,)
-                    )
+                      child: ClockViews(
+                        size: MediaQuery.of(context).size.height / 4,
+                      ),
+                    ),
                   ),
                   Flexible(
                     flex: 2,
@@ -94,9 +95,10 @@ class Homepage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Timezone', // ลบ parentheses ที่ไม่จำเป็น
+                          'Timezone',
                           style: TextStyle(
                             fontFamily: 'avenir',
+                            fontWeight: FontWeight.w500,
                             color: Colors.white,
                             fontSize: 24,
                           ),
@@ -107,8 +109,11 @@ class Homepage extends StatelessWidget {
                             Icon(Icons.language_sharp, color: Colors.white),
                             SizedBox(width: 16),
                             Text(
-                              'UTC$offsetSign$timezoneString', // ใช้ string interpolation แทนการต่อ string
-                              style: TextStyle(color: Colors.white, fontSize: 14),
+                              'UTC$offsetSign$timezoneString',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
                             ),
                           ],
                         ),
@@ -134,7 +139,7 @@ class Homepage extends StatelessWidget {
             Image.asset(image, scale: 1.5),
             SizedBox(height: 16),
             Text(
-              title ?? '',
+              title, // Removed unnecessary null check
               style: TextStyle(
                 fontFamily: 'avenir',
                 color: Colors.white,
