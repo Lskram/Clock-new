@@ -127,7 +127,8 @@ class ClockPainter extends CustomPainter {
     // วาดเส้นขีดบอกเวลา - แก้ไขการคำนวณ
     var outerRadius = radius * 0.75;
     var innerRadius = radius * 0.65;
-    for (var i = 0; i < 360; i += 30) { // เปลี่ยนจาก 12 เป็น 30 เพื่อให้ได้ 12 เส้น
+    for (var i = 0; i < 360; i += 30) {
+      // เปลี่ยนจาก 12 เป็น 30 เพื่อให้ได้ 12 เส้น
       var x1 = centerX + outerRadius * cos(i * pi / 180);
       var y1 = centerY + outerRadius * sin(i * pi / 180);
       var x2 = centerX + innerRadius * cos(i * pi / 180);

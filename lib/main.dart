@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/homepage.dart';
+import 'package:flutter_application_1/enums.dart';
+import 'package:flutter_application_1/views/homepage.dart';
+import 'package:flutter_application_1/menu_info.dart';
+import 'package:provider/provider.dart';
 
 void main() {
   runApp(const MyApp());
@@ -16,7 +19,15 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: Homepage(),
+      home: ChangeNotifierProvider<MenuInfo>(
+        create: (context) => MenuInfo(
+          MenuType.clock,
+          title: 'Clock',
+          imageSource:
+              'assets/clock_icon.png', // ⭐ แก้ path ให้ตรงกับ data.dart
+        ),
+        child: Homepage(), // ⭐ เอา ChangeNotifierProvider ซ้อนออก
+      ),
     );
   }
 }
