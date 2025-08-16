@@ -1,5 +1,7 @@
+import 'package:flutter_application_1/constants/theme_data.dart';
 import 'package:flutter_application_1/enums.dart';
-import 'package:flutter_application_1/menu_info.dart';
+import 'package:flutter_application_1/models/alarm_info.dart';
+import 'package:flutter_application_1/models/menu_info.dart';
 
 List<MenuInfo> menuItems = [
   MenuInfo(
@@ -21,5 +23,16 @@ List<MenuInfo> menuItems = [
     MenuType.stopwatch,
     title: 'Stopwatch',
     imageSource: 'assets/stopwatch_icon.png',
+  ),
+];
+
+List<AlarmInfo> alarms = [
+  AlarmInfo(
+    alarmDateTime: DateTime.now().add(Duration(hours: 1)),
+    description: 'Office', gradientColors: GradientColors.sky,
+  ),
+  AlarmInfo(
+    alarmDateTime: DateTime.now().add(Duration(hours: 2)),
+    description: 'Sport', gradientColors: GradientColors.mango,
   ),
 ];

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/enums.dart';
-import 'package:flutter_application_1/views/homepage.dart';
-import 'package:flutter_application_1/menu_info.dart';
+import 'package:flutter_application_1/views/home_page.dart';
+import 'package:flutter_application_1/models/menu_info.dart';
 import 'package:provider/provider.dart';
 
 void main() {
