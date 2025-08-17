@@ -1,22 +1,40 @@
-ฉันคงจะตกหลุมรัก เธออีก
-I just wonder,บางที
-แต่ว่าเธอน่ะใจร้าย แบบนี้
-ฉันก็พูดไม่ออกแต่รู้ว่าไม่ค่อยดีหรอก
-ตกหลุมรัก เธออีก
-I just wonder,บางที
-แต่ว่าเธอน่ะใจร้าย แบบนี้
-ฉันก็พูดไม่ออกแต่รู้ว่าไม่ค่อยดีหรอก
-
-ฉันไม่คิดในชีวิตจะมาหลงรัก
-ไม่มีสิทธิ์คิดอะไรแบบนั้นหรอก
-รู้ฉันรู้มันยากจะบอก เธอฉันไม่ควรเอาแต่ใจ ถ้าเธอคิดจะไป
-
-แค่เธอยิ้ม มองลงมา ฉันก็เพ้อไปทุกทีทุกเวลา 
-เธอไม่เหมือนใครแต่ฉันคนธรรมดาแต่ถ้าจะเก็บเธอไว้ใครก็คงจะเวทนา
-
-ซ้ำ (*)
-
-แอบดูตอนที่เขา ส่งข้อความ มาบอกเธอ
-อย่างทำอย่างนี้ ทำอย่างนั้น ฉันก็ได้แต่
-แอบดูตอนที่เขา ส่งข้อความ มาบอกเธอ
-อย่างทำอย่างนี้ ทำอย่างนั้น ฉันก็ได้แต่มอง 
+void scheduleAlarm() async {
+  var scheduledNotificationDateTime = DateTime.now().add(Duration(seconds: 10));
+  
+  // ปรับให้ใช้งานได้กับ API ใหม่
+  const AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
+    'alarm_notif',
+    'alarm_notif',
+    channelDescription: 'Channel for Alarm notification',
+    // icon: 'codex_logo', // เปลี่ยนเป็น largeIcon
+    sound: RawResourceAndroidNotificationSound('a_long_cold_sting'),
+    largeIcon: DrawableResourceAndroidBitmap('codex_logo'),
+    importance: Importance.max,
+    priority: Priority.high,
+  ); // AndroidNotificationDetails
+  
+  // เปลี่ยนจาก IOSNotificationDetails เป็น DarwinNotificationDetails
+  const DarwinNotificationDetails iOSPlatformChannelSpecifics = DarwinNotificationDetails(
+    sound: 'a_long_cold_sting.wav',
+    presentAlert: true,
+    presentBadge: true,
+    presentSound: true,
+  );
+  
+  // ปรับ constructor ให้ใช้ named parameters
+  const NotificationDetails platformChannelSpecifics = NotificationDetails(
+    android: androidPlatformChannelSpecifics, 
+    iOS: iOSPlatformChannelSpecifics,
+  );
+  
+  // เปลี่ยนจาก schedule เป็น zonedSchedule (เพราะ schedule deprecated)
+  await flutterLocalNotificationsPlugin.zonedSchedule(
+    0,
+    'Office',
+    'Good morning! Time for office.',
+    tz.TZDateTime.from(scheduledNotificationDateTime, tz.local),
+    platformChannelSpecifics,
+    androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+    uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+  );
+}

@@ -1,8 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- เพิ่ม permissions สำหรับ notifications -->
+    <!-- เพิ่ม permissions สำหรับ notifications และ alarms -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- เพิ่มสิทธิ์สำหรับ exact alarms -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
     
     <application
         android:label="flutter_application_1"
@@ -16,7 +18,9 @@
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
-            android:windowSoftInputMode="adjustResize">
+            android:windowSoftInputMode="adjustResize"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true">
             <!-- Specifies an Android theme to apply to this Activity as soon as
                  the Android process has started. This theme is visible to the user
                  while the Flutter UI initializes. After that, this theme continues
