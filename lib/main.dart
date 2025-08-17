@@ -2,9 +2,50 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/enums.dart';
 import 'package:flutter_application_1/views/home_page.dart';
 import 'package:flutter_application_1/models/menu_info.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:provider/provider.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
-void main() {
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize timezone
+  tz.initializeTimeZones();
+
+  // Android initialization settings
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+
+  // iOS/macOS initialization settings
+  const DarwinInitializationSettings initializationSettingsDarwin =
+      DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
+
+  // Combined initialization settings
+  const InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+    iOS: initializationSettingsDarwin,
+    macOS: initializationSettingsDarwin,
+  );
+
+  // Initialize the plugin
+  await flutterLocalNotificationsPlugin.initialize(
+    initializationSettings,
+    onDidReceiveNotificationResponse: (NotificationResponse response) async {
+      if (response.payload != null) {
+        print('Notification payload: ${response.payload}');
+        // Handle the notification tap here
+      }
+    },
+  );
+
   runApp(const MyApp());
 }
 
@@ -23,10 +64,9 @@ class MyApp extends StatelessWidget {
         create: (context) => MenuInfo(
           MenuType.clock,
           title: 'Clock',
-          imageSource:
-              'assets/clock_icon.png', // ⭐ แก้ path ให้ตรงกับ data.dart
+          imageSource: 'assets/clock_icon.png',
         ),
-        child: Homepage(), // ⭐ เอา ChangeNotifierProvider ซ้อนออก
+        child: Homepage(),
       ),
     );
   }

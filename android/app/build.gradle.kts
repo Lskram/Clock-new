@@ -7,10 +7,12 @@ plugins {
 
 android {
     namespace = "com.example.flutter_application_1"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 35 // อัปเดตเป็น 35 สำหรับ plugin ใหม่
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // เพิ่ม core library desugaring
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
@@ -28,6 +30,9 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        // เพิ่ม multiDex support
+        multiDexEnabled = true
     }
 
     buildTypes {
@@ -37,6 +42,11 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+}
+
+dependencies {
+    // เพิ่ม core library desugaring dependency
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
 
 flutter {

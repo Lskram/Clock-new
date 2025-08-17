@@ -1,6 +1,4 @@
-import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/constants/theme_data.dart';
 import 'package:flutter_application_1/data.dart';
 
 class AlarmPage extends StatefulWidget {
@@ -120,40 +118,33 @@ class _AlarmPageState extends State<AlarmPage> {
                     );
                   })
                   .followedBy([
-                    DottedBorder(
-                      strokeWidth: 2,
-                      color:CustomColors.clockOutline,
-                      borderType: BorderType.RRect,
-                      radius: Radius.circular(24),
-                      dashPattern: [5, 4],
-                      child: Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Color.fromARGB(255, 27, 29, 41),
-                          borderRadius: BorderRadius.all(Radius.circular(24)),
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Color.fromARGB(255, 27, 29, 41),
+                        borderRadius: BorderRadius.all(Radius.circular(24)),
+                      ),
+                      child: TextButton(
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 16,
+                          ),
                         ),
-                        child: TextButton(
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 32,
-                              vertical: 16,
-                            ),
-                          ),
-                          onPressed: () {},
-                          child: Column(
-                            children: <Widget>[
-                              Image.asset('assets/add_alarm.png', scale: 1.5),
-                              SizedBox(height: 8),
-                              Text(
-                                'Add Alarm',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontFamily: 'avenir',
-                                  fontSize: 16,
-                                ),
+                        onPressed: () {},
+                        child: Column(
+                          children: <Widget>[
+                            Image.asset('assets/add_alarm.png', scale: 1.5),
+                            SizedBox(height: 8),
+                            Text(
+                              'Add Alarm',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontFamily: 'avenir',
+                                fontSize: 16,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
