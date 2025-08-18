@@ -39,6 +39,7 @@ dependencies:
   dotted_border: 3.1.0
   flutter_local_notifications: ^19.4.0
   timezone: ^0.10.1
+  sqflite: ^2.4.2
 
 dev_dependencies:
   flutter_test:

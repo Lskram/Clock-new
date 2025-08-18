@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/data.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/timezone.dart' as tz;
+import 'package:flutter_application_1/constants/theme_data.dart';
+import 'package:flutter_application_1/models/alarm_info.dart';
+import 'package:intl/intl.dart';
+import 'package:flutter_application_1/alarm_helper.dart';
 
 class AlarmPage extends StatefulWidget {
   const AlarmPage({super.key});
@@ -11,76 +12,26 @@ class AlarmPage extends StatefulWidget {
 }
 
 class _AlarmPageState extends State<AlarmPage> {
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-      FlutterLocalNotificationsPlugin();
+  DateTime? _alarmTime;
+  late String _alarmTimeString;
+  bool _isRepeatSelected = false;
+  final AlarmHelper _alarmHelper =
+      AlarmHelper(); // à¹€à¸›à¸¥à¸µà¹ˆà¸¢à¸™à¹€à¸›à¹‡à¸™ final
+  Future<List<AlarmInfo>>? _alarms;
 
   @override
   void initState() {
+    _alarmTime = DateTime.now();
+    _alarmHelper.initializeDatabase().then((value) {
+      debugPrint('------database initialized');
+      loadAlarms();
+    });
     super.initState();
-    _initializeNotifications();
   }
 
-  Future<void> _initializeNotifications() async {
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-
-    const DarwinInitializationSettings initializationSettingsDarwin =
-        DarwinInitializationSettings(
-          requestAlertPermission: true,
-          requestBadgePermission: true,
-          requestSoundPermission: true,
-        );
-
-    const InitializationSettings initializationSettings =
-        InitializationSettings(
-          android: initializationSettingsAndroid,
-          iOS: initializationSettingsDarwin,
-          macOS: initializationSettingsDarwin,
-        );
-
-    await flutterLocalNotificationsPlugin.initialize(
-      initializationSettings,
-      onDidReceiveNotificationResponse: (NotificationResponse response) async {
-        debugPrint('Notification tapped: ${response.payload}');
-      },
-    );
-  }
-
-  // ขอสิทธิ์การแจ้งเตือน
-  Future<void> _requestPermissions() async {
-    final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
-        flutterLocalNotificationsPlugin
-            .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin
-            >();
-
-    if (androidImplementation != null) {
-      // ขอสิทธิ์ notifications
-      await androidImplementation.requestNotificationsPermission();
-
-      // ขอสิทธิ์ exact alarms
-      await androidImplementation.requestExactAlarmsPermission();
-
-      // ตรวจสอบสิทธิ์
-      final bool? canScheduleExactAlarms = await androidImplementation
-          .canScheduleExactNotifications();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              canScheduleExactAlarms == true
-                  ? 'Exact alarms permission granted!'
-                  : 'Please grant exact alarms permission in settings',
-            ),
-            backgroundColor: canScheduleExactAlarms == true
-                ? Colors.green
-                : Colors.orange,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-    }
+  void loadAlarms() {
+    _alarms = _alarmHelper.getAlarms();
+    if (mounted) setState(() {});
   }
 
   @override
@@ -90,160 +41,291 @@ class _AlarmPageState extends State<AlarmPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          // หัวข้อ + ปุ่มขอสิทธิ์
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Alarm',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontFamily: 'avenir',
-                ),
-              ),
-              ElevatedButton(
-                onPressed: _requestPermissions,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                ),
-                child: Text(
-                  'Grant Permissions',
-                  style: TextStyle(fontSize: 12),
-                ),
-              ),
-            ],
+          // à¸«à¸±à¸§à¸‚à¹‰à¸­ Alarm
+          Text(
+            'Alarm',
+            style: TextStyle(
+              fontFamily: 'avenir',
+              fontWeight: FontWeight.w700,
+              color: CustomColors.primaryTextColor,
+              fontSize: 24,
+            ),
           ),
           SizedBox(height: 16),
+
+          // à¸£à¸²à¸¢à¸à¸²à¸£ Alarms
           Expanded(
-            child: ListView(
-              children: alarms
-                  .map<Widget>((alarm) {
-                    return Container(
-                      margin: EdgeInsets.only(bottom: 32),
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors:
-                              alarm.gradientColors ?? [Colors.red, Colors.blue],
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: (alarm.gradientColors?.last ?? Colors.blue)
-                                .withValues(alpha: 0.4),
-                            blurRadius: 8,
-                            spreadRadius: 2,
-                            offset: Offset(4, 4),
-                          ),
-                        ],
-                        borderRadius: BorderRadius.all(Radius.circular(24)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: <Widget>[
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.label,
-                                    color: Colors.white,
-                                    size: 24,
+            child: FutureBuilder<List<AlarmInfo>>(
+              future: _alarms,
+              builder: (context, snapshot) {
+                if (snapshot.hasData) {
+                  return ListView(
+                    children: snapshot.data!
+                        .map<Widget>((alarm) {
+                          var alarmTime = DateFormat(
+                            'hh:mm aa',
+                          ).format(alarm.alarmDateTime);
+                          var gradientColor =
+                              alarm.gradientColors ?? GradientColors.sky;
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 32),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: gradientColor,
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: gradientColor.last.withValues(
+                                    alpha: 0.4,
                                   ),
-                                  SizedBox(width: 8),
+                                  blurRadius: 8,
+                                  spreadRadius: 2,
+                                  offset: Offset(4, 4),
+                                ),
+                              ],
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(24),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: <Widget>[
+                                    Row(
+                                      children: <Widget>[
+                                        Icon(
+                                          Icons.label,
+                                          color: Colors.white,
+                                          size: 24,
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          alarm.description ??
+                                              'Alarm', // à¹€à¸›à¸¥à¸µà¹ˆà¸¢à¸™à¸ˆà¸²à¸ title à¹€à¸›à¹‡à¸™ description
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontFamily: 'avenir',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Switch(
+                                      onChanged: (bool value) {
+                                        // à¹à¸„à¹ˆ UI à¹€à¸‰à¸¢à¹† à¹„à¸¡à¹ˆà¸•à¹‰à¸­à¸‡à¸—à¸³à¸­à¸°à¹„à¸£ (à¸•à¸²à¸¡à¸—à¸µà¹ˆà¸„à¸¸à¸“à¸‚à¸­)
+                                      },
+                                      value: true,
+                                      activeColor: Colors.white,
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                  'Mon-Fri',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontFamily: 'avenir',
+                                  ),
+                                ),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: <Widget>[
+                                    Text(
+                                      alarmTime,
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontFamily: 'avenir',
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(Icons.delete),
+                                      color: Colors.white,
+                                      onPressed: () {
+                                        deleteAlarm(alarm.id);
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        })
+                        .followedBy([
+                          // à¸›à¸¸à¹ˆà¸¡à¹€à¸žà¸´à¹ˆà¸¡ Alarm à¹ƒà¸«à¸¡à¹ˆ
+                          Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: CustomColors.clockBG,
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(24),
+                              ),
+                              border: Border.all(
+                                color: CustomColors.clockOutline,
+                                width: 2,
+                              ),
+                            ),
+                            child: MaterialButton(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 32,
+                                vertical: 16,
+                              ),
+                              onPressed: () {
+                                _alarmTimeString = DateFormat(
+                                  'HH:mm',
+                                ).format(DateTime.now());
+                                showModalBottomSheet(
+                                  context: context,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.vertical(
+                                      top: Radius.circular(24),
+                                    ),
+                                  ),
+                                  builder: (context) {
+                                    return StatefulBuilder(
+                                      builder: (context, setModalState) {
+                                        return Container(
+                                          padding: const EdgeInsets.all(32),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              // à¹à¸ªà¸”à¸‡à¹€à¸§à¸¥à¸² - à¸à¸”à¹à¸¥à¹‰à¸§à¹à¸ªà¸”à¸‡ Time Picker
+                                              TextButton(
+                                                onPressed: () async {
+                                                  var selectedTime =
+                                                      await showTimePicker(
+                                                        context: context,
+                                                        initialTime:
+                                                            TimeOfDay.now(),
+                                                      );
+                                                  if (selectedTime != null) {
+                                                    final now = DateTime.now();
+                                                    var selectedDateTime =
+                                                        DateTime(
+                                                          now.year,
+                                                          now.month,
+                                                          now.day,
+                                                          selectedTime.hour,
+                                                          selectedTime.minute,
+                                                        );
+                                                    _alarmTime =
+                                                        selectedDateTime;
+                                                    setModalState(() {
+                                                      _alarmTimeString =
+                                                          DateFormat(
+                                                            'HH:mm',
+                                                          ).format(
+                                                            selectedDateTime,
+                                                          );
+                                                    });
+                                                  }
+                                                },
+                                                child: Text(
+                                                  _alarmTimeString,
+                                                  style: TextStyle(
+                                                    fontSize: 32,
+                                                    color: Colors.black,
+                                                  ),
+                                                ),
+                                              ),
+
+                                              // Repeat Switch
+                                              ListTile(
+                                                title: Text('Repeat'),
+                                                trailing: Switch(
+                                                  onChanged: (value) {
+                                                    setModalState(() {
+                                                      _isRepeatSelected = value;
+                                                    });
+                                                  },
+                                                  value: _isRepeatSelected,
+                                                ),
+                                              ),
+
+                                              // Sound Option
+                                              ListTile(
+                                                title: Text('Sound'),
+                                                trailing: Icon(
+                                                  Icons.arrow_forward_ios,
+                                                ),
+                                                onTap: () {
+                                                  // à¹à¸„à¹ˆ UI à¹€à¸‰à¸¢à¹† à¹„à¸¡à¹ˆà¸•à¹‰à¸­à¸‡à¸—à¸³à¸­à¸°à¹„à¸£
+                                                },
+                                              ),
+
+                                              // Title Option
+                                              ListTile(
+                                                title: Text('Title'),
+                                                trailing: Icon(
+                                                  Icons.arrow_forward_ios,
+                                                ),
+                                                onTap: () {
+                                                  // à¹à¸„à¹ˆ UI à¹€à¸‰à¸¢à¹† à¹„à¸¡à¹ˆà¸•à¹‰à¸­à¸‡à¸—à¸³à¸­à¸°à¹„à¸£
+                                                },
+                                              ),
+
+                                              SizedBox(height: 16),
+
+                                              // à¸›à¸¸à¹ˆà¸¡ Save
+                                              FloatingActionButton.extended(
+                                                onPressed: () {
+                                                  onSaveAlarm(
+                                                    _isRepeatSelected,
+                                                  );
+                                                },
+                                                icon: Icon(Icons.alarm),
+                                                label: Text('Save'),
+                                                backgroundColor: Colors.blue,
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    );
+                                  },
+                                );
+                              },
+                              child: Column(
+                                children: <Widget>[
+                                  Icon(
+                                    Icons.add,
+                                    color: Colors.white,
+                                    size: 48,
+                                  ),
+                                  SizedBox(height: 8),
                                   Text(
-                                    'Office',
+                                    'Add Alarm',
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontFamily: 'avenir',
+                                      fontSize: 16,
                                     ),
                                   ),
                                 ],
                               ),
-                              Switch(
-                                onChanged: (bool value) {
-                                  setState(() {
-                                    // Handle switch toggle
-                                  });
-                                },
-                                value: true,
-                                activeColor: Colors.white,
-                              ),
-                            ],
-                          ),
-                          Text(
-                            'Mon-Fri',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontFamily: 'avenir',
                             ),
                           ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                '07:00 AM',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontFamily: 'avenir',
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              Icon(
-                                Icons.keyboard_arrow_down,
-                                size: 36,
-                                color: Colors.white,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
-                  })
-                  .followedBy([
-                    Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Color.fromARGB(255, 27, 29, 41),
-                        borderRadius: BorderRadius.all(Radius.circular(24)),
-                      ),
-                      child: TextButton(
-                        style: TextButton.styleFrom(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 32,
-                            vertical: 16,
-                          ),
-                        ),
-                        onPressed: () {
-                          scheduleAlarm();
-                        },
-                        child: Column(
-                          children: <Widget>[
-                            Image.asset('assets/add_alarm.png', scale: 1.5),
-                            SizedBox(height: 8),
-                            Text(
-                              'Add Alarm',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontFamily: 'avenir',
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ])
-                  .toList(),
+                        ])
+                        .toList(),
+                  );
+                }
+                return Center(
+                  child: Text(
+                    'Loading..',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -251,50 +333,34 @@ class _AlarmPageState extends State<AlarmPage> {
     );
   }
 
-  void scheduleAlarm() async {
-    var scheduledNotificationDateTime = DateTime.now().add(
-      Duration(seconds: 10),
+  void onSaveAlarm(bool isRepeating) {
+    DateTime? scheduleAlarmDateTime;
+    if (_alarmTime!.isAfter(DateTime.now())) {
+      scheduleAlarmDateTime = _alarmTime;
+    } else {
+      scheduleAlarmDateTime = _alarmTime!.add(Duration(days: 1));
+    }
+
+    var alarmInfo = AlarmInfo(
+      alarmDateTime: scheduleAlarmDateTime!,
+      description: 'alarm', // à¹ƒà¸Šà¹‰ description à¹à¸—à¸™ title
+      gradientColors: GradientColors
+          .sky, // à¹ƒà¸Šà¹‰ gradientColors à¹à¸—à¸™ gradientColorIndex
+      gradientColorIndex:
+          0, // à¹€à¸žà¸´à¹ˆà¸¡à¸šà¸£à¸£à¸—à¸±à¸”à¸™à¸µà¹‰à¹€à¸žà¸·à¹ˆà¸­à¹ƒà¸«à¹‰à¸¡à¸µà¸„à¹ˆà¸² gradientColorIndex
     );
+    _alarmHelper.insertAlarm(alarmInfo);
 
-    // ปรับให้ใช้งานได้กับ API ใหม่
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-          'alarm_notif',
-          'alarm_notif',
-          channelDescription: 'Channel for Alarm notification',
-          sound: RawResourceAndroidNotificationSound(
-            'notification',
-          ), // ลบ .mp3 สำหรับ Android
-          largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
-          importance: Importance.max,
-          priority: Priority.high,
-        ); // AndroidNotificationDetails
+    if (mounted) {
+      Navigator.pop(context);
+    }
+    loadAlarms();
+  }
 
-    // เปลี่ยนจาก IOSNotificationDetails เป็น DarwinNotificationDetails
-    const DarwinNotificationDetails iOSPlatformChannelSpecifics =
-        DarwinNotificationDetails(
-          sound: 'notification.mp3', // เก็บ .mp3 สำหรับ iOS
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        );
-
-    // ปรับ constructor ให้ใช้ named parameters
-    const NotificationDetails platformChannelSpecifics = NotificationDetails(
-      android: androidPlatformChannelSpecifics,
-      iOS: iOSPlatformChannelSpecifics,
-    );
-
-    // เปลี่ยนจาก schedule เป็น zonedSchedule และลบ parameter ที่ไม่รองรับ
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-      0,
-      'Office',
-      'Good morning! Time for office.',
-      tz.TZDateTime.from(scheduledNotificationDateTime, tz.local),
-      platformChannelSpecifics,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      // ลบบรรทัดนี้เพราะไม่รองรับในเวอร์ชันใหม่
-      // uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-    );
+  void deleteAlarm(int? id) {
+    if (id != null) {
+      _alarmHelper.delete(id);
+      loadAlarms();
+    }
   }
 }

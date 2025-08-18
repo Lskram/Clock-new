@@ -5,7 +5,7 @@ import 'package:flutter_application_1/models/menu_info.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:provider/provider.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
-import 'package:timezone/timezone.dart' as tz;
+// ลบ import ที่ไม่ได้ใช้: import 'package:timezone/timezone.dart' as tz;
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -40,7 +40,9 @@ void main() async {
     initializationSettings,
     onDidReceiveNotificationResponse: (NotificationResponse response) async {
       if (response.payload != null) {
-        print('Notification payload: ${response.payload}');
+        debugPrint(
+          'Notification payload: ${response.payload}',
+        ); // เปลี่ยนจาก print เป็น debugPrint
         // Handle the notification tap here
       }
     },
