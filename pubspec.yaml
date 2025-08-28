@@ -1,36 +1,66 @@
-name: flutter_application_1
-description: "A new Flutter project."
-publish_to: 'none'
+name: office_syndrome_helper
+description: แอปแจ้งเตือนออกกำลังกายแก้ออฟฟิศซินโดรม
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.8.1
+  sdk: '>=3.0.0 <4.0.0'
+
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.8
-  intl: ^0.20.2
-  provider: ^6.1.5
-  dotted_border: 3.1.0
-  flutter_local_notifications: ^19.4.0
-  timezone: ^0.10.1
-  sqflite: ^2.4.2
+
+  # State Management & Navigation
+  get: ^4.6.6
+
+  # Local Database
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  
+  # Notifications & Background Tasks
+  flutter_local_notifications: ^17.2.2
+  timezone: ^0.9.4
+  android_alarm_manager_plus: ^4.0.3
+  
+  # Permissions
+  permission_handler: ^11.3.1
+  
+  # UI Components
+  percent_indicator: ^4.2.1
+  
+  # Utilities
+  uuid: ^4.4.0
+  intl: ^0.19.0
+  
+  # Icons & Fonts
+  cupertino_icons: ^1.0.2
+  google_fonts: ^6.2.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^6.0.0
+  
+  # Code Generation (สำคัญ!)
+  hive_generator: ^2.0.1
+  build_runner: ^2.4.9
+  
+  # Linting
+  flutter_lints: ^3.0.0
+
 flutter:
   uses-material-design: true
+  
+  # Assets
   assets:
-    - assets/
+    - assets/images/
+    - assets/icons/
+    - assets/images/exercise_illustrations/
+  
+  # Thai Fonts
   fonts:
-    - family: avenir
+    - family: Prompt
       fonts:
-        - asset: assets/fonts/Avenir-Book.ttf
-        - asset: assets/fonts/Avenir-Heavy.ttf
-          weight: 700
-        - asset: assets/fonts/Avenir-Medium.ttf
+        - asset: fonts/Prompt-Regular.ttf
+        - asset: fonts/Prompt-Medium.ttf
           weight: 500
-        - asset: assets/fonts/Avenir-Light.ttf
-          weight: 300
+        - asset: fonts/Prompt-Bold.ttf
+          weight: 700
