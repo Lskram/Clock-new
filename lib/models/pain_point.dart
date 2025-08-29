@@ -3,108 +3,187 @@ import 'package:hive/hive.dart';
 @HiveType(typeId: 0)
 class PainPoint extends HiveObject {
   @HiveField(0)
-  final int id;
-
+  String id;
+  
   @HiveField(1)
-  final String name;
-
+  String name;
+  
   @HiveField(2)
-  final String description;
-
+  String description;
+  
   @HiveField(3)
-  final String iconPath;
-
+  String category;
+  
   @HiveField(4)
-  final bool isSelected;
+  String? iconPath;
+  
+  @HiveField(5)
+  List<String> relatedTreatmentIds;
+  
+  @HiveField(6)
+  bool isDefault;
+  
+  @HiveField(7)
+  DateTime createdAt;
+  
+  @HiveField(8)
+  DateTime updatedAt;
 
   PainPoint({
     required this.id,
     required this.name,
     required this.description,
-    required this.iconPath,
-    this.isSelected = false,
+    required this.category,
+    this.iconPath,
+    this.relatedTreatmentIds = const [],
+    this.isDefault = false,
+    required this.createdAt,
+    required this.updatedAt,
   });
 
-  PainPoint copyWith({
-    int? id,
-    String? name,
-    String? description,
+  factory PainPoint.create({
+    required String name,
+    required String description,
+    required String category,
     String? iconPath,
-    bool? isSelected,
+    List<String>? relatedTreatmentIds,
+    bool isDefault = false,
   }) {
+    final now = DateTime.now();
     return PainPoint(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      description: description ?? this.description,
-      iconPath: iconPath ?? this.iconPath,
-      isSelected: isSelected ?? this.isSelected,
+      id: '${now.millisecondsSinceEpoch}_${name.hashCode}',
+      name: name,
+      description: description,
+      category: category,
+      iconPath: iconPath,
+      relatedTreatmentIds: relatedTreatmentIds ?? [],
+      isDefault: isDefault,
+      createdAt: now,
+      updatedAt: now,
     );
   }
-}
 
-// ข้อมูลจุดที่ปวดทั้หมด 10 จุด
-class PainPointData {
-  static List<PainPoint> getAllPainPoints() {
+  PainPoint copyWith({
+    String? name,
+    String? description,
+    String? category,
+    String? iconPath,
+    List<String>? relatedTreatmentIds,
+    bool? isDefault,
+  }) {
+    return PainPoint(
+      id: id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      category: category ?? this.category,
+      iconPath: iconPath ?? this.iconPath,
+      relatedTreatmentIds: relatedTreatmentIds ?? List.from(this.relatedTreatmentIds),
+      isDefault: isDefault ?? this.isDefault,
+      createdAt: createdAt,
+      updatedAt: DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+      'category': category,
+      'iconPath': iconPath,
+      'relatedTreatmentIds': relatedTreatmentIds,
+      'isDefault': isDefault,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+    };
+  }
+
+  factory PainPoint.fromJson(Map<String, dynamic> json) {
+    return PainPoint(
+      id: json['id'],
+      name: json['name'],
+      description: json['description'],
+      category: json['category'],
+      iconPath: json['iconPath'],
+      relatedTreatmentIds: List<String>.from(json['relatedTreatmentIds'] ?? []),
+      isDefault: json['isDefault'] ?? false,
+      createdAt: DateTime.parse(json['createdAt']),
+      updatedAt: DateTime.parse(json['updatedAt']),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is PainPoint && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
+
+  @override
+  String toString() {
+    return 'PainPoint(id: $id, name: $name, category: $category)';
+  }
+
+  // Static method to create default pain points
+  static List<PainPoint> getDefaultPainPoints() {
+    final now = DateTime.now();
     return [
       PainPoint(
-        id: 1,
-        name: 'ศีรษะ',
-        description: 'ปวดศีรษะ เครียด',
-        iconPath: 'assets/icons/head.png',
+        id: 'neck_pain',
+        name: 'ปวดคอ',
+        description: 'อาการปวดเมื่อยบริเวณต้นคอและลำคอ',
+        category: 'คอและไหล่',
+        iconPath: 'assets/icons/neck_pain.png',
+        relatedTreatmentIds: ['neck_stretch_1', 'neck_stretch_2', 'neck_massage'],
+        isDefault: true,
+        createdAt: now,
+        updatedAt: now,
       ),
       PainPoint(
-        id: 2,
-        name: 'ตา',
-        description: 'ตาล้า มองหน้าจอนาน',
-        iconPath: 'assets/icons/eyes.png',
+        id: 'shoulder_pain',
+        name: 'ปวดไหล่',
+        description: 'อาการปวดเมื่อยบริเวณไหล่และกล้ามเนื้อรอบไหล่',
+        category: 'คอและไหล่',
+        iconPath: 'assets/icons/shoulder_pain.png',
+        relatedTreatmentIds: ['shoulder_roll', 'shoulder_stretch', 'shoulder_massage'],
+        isDefault: true,
+        createdAt: now,
+        updatedAt: now,
       ),
       PainPoint(
-        id: 3,
-        name: 'คอ',
-        description: 'ปวดคอ คอแข็ง',
-        iconPath: 'assets/icons/neck.png',
+        id: 'back_pain',
+        name: 'ปวดหลัง',
+        description: 'อาการปวดเมื่อยบริเวณหลังส่วนบนและหลังส่วนล่าง',
+        category: 'หลัง',
+        iconPath: 'assets/icons/back_pain.png',
+        relatedTreatmentIds: ['back_stretch', 'spinal_twist', 'back_massage'],
+        isDefault: true,
+        createdAt: now,
+        updatedAt: now,
       ),
       PainPoint(
-        id: 4,
-        name: 'บ่าและไหล่',
-        description: 'ปวดบ่า ไหล่แข็ง',
-        iconPath: 'assets/icons/shoulder.png',
+        id: 'eye_strain',
+        name: 'ปวดตา',
+        description: 'อาการเมื่อยล้าและปวดตาจากการใช้คอมพิวเตอร์นาน',
+        category: 'ตา',
+        iconPath: 'assets/icons/eye_strain.png',
+        relatedTreatmentIds: ['eye_exercise', 'blink_exercise', 'focus_shift'],
+        isDefault: true,
+        createdAt: now,
+        updatedAt: now,
       ),
       PainPoint(
-        id: 5,
-        name: 'หลังส่วนบน',
-        description: 'ปวดหลัง ระหว่างสะบัก',
-        iconPath: 'assets/icons/upper_back.png',
-      ),
-      PainPoint(
-        id: 6,
-        name: 'หลังส่วนล่าง',
-        description: 'ปวดเอว หลังส่วนล่าง',
-        iconPath: 'assets/icons/lower_back.png',
-      ),
-      PainPoint(
-        id: 7,
-        name: 'แขน/ศอก',
-        description: 'ปวดแขน ศอกแข็ง',
-        iconPath: 'assets/icons/arms.png',
-      ),
-      PainPoint(
-        id: 8,
-        name: 'ข้อมือ/มือ/นิ้ว',
-        description: 'ปวดข้อมือ ชาปลายนิ้ว',
-        iconPath: 'assets/icons/wrist.png',
-      ),
-      PainPoint(
-        id: 9,
-        name: 'ขา',
-        description: 'ขาชา เข่าแข็ง',
-        iconPath: 'assets/icons/legs.png',
-      ),
-      PainPoint(
-        id: 10,
-        name: 'เท้า',
-        description: 'เท้าบวม ปวดข้อเท้า',
-        iconPath: 'assets/icons/feet.png',
+        id: 'wrist_pain',
+        name: 'ปวดข้อมือ',
+        description: 'อาการปวดเมื่อยบริเวณข้อมือจากการใช้เมาส์และแป้นพิมพ์',
+        category: 'แขนและมือ',
+        iconPath: 'assets/icons/wrist_pain.png',
+        relatedTreatmentIds: ['wrist_stretch', 'hand_exercise', 'finger_stretch'],
+        isDefault: true,
+        createdAt: now,
+        updatedAt: now,
       ),
     ];
   }

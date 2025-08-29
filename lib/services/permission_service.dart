@@ -1,284 +1,228 @@
 import 'dart:io';
-import 'package:get/get.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 
-class PermissionService extends GetxService {
-  // Initialize method for GetxService
-  Future<PermissionService> init() async {
-    return this;
-  }
-
-  /// ตรวจสอบและขออนุญาตทั้งหมดที่จำเป็น
-  Future<Map<String, bool>> requestAllPermissions() async {
-    final results = <String, bool>{};
-
-    // Notification permission
-    results['notification'] = await requestNotificationPermission();
-
-    // Exact alarm permission (Android 12+)
-    if (Platform.isAndroid) {
-      results['exactAlarm'] = await requestExactAlarmPermission();
-      results['scheduleExactAlarm'] =
-          await requestScheduleExactAlarmPermission();
-    }
-
-    return results;
-  }
-
-  /// ขออนุญาติการแจ้งเตือน
+class PermissionService {
+  // Request notification permission
   Future<bool> requestNotificationPermission() async {
     try {
       final status = await Permission.notification.request();
-      print('Notification permission status: $status');
+      debugPrint('Notification permission status: $status');
+
+      if (status.isDenied) {
+        debugPrint('Notification permission denied');
+        return false;
+      }
+
       return status.isGranted;
     } catch (e) {
-      print('Error requesting notification permission: $e');
+      debugPrint('Error requesting notification permission: $e');
       return false;
     }
   }
 
-  /// ตรวจสอบสิทธิ์การแจ้งเตือน
+  // Check notification permission status
   Future<bool> hasNotificationPermission() async {
     try {
       final status = await Permission.notification.status;
+      debugPrint('Current notification permission status: $status');
       return status.isGranted;
     } catch (e) {
-      print('Error checking notification permission: $e');
+      debugPrint('Error checking notification permission: $e');
       return false;
     }
   }
 
-  /// ขออนุญาติ Exact Alarm (Android 12+)
-  Future<bool> requestExactAlarmPermission() async {
-    if (!Platform.isAndroid) return true;
-
-    try {
-      // ใช้ scheduleExactAlarm แทน exactAlarm
-      final status = await Permission.scheduleExactAlarm.request();
-      print('Exact alarm permission status: $status');
-      return status.isGranted;
-    } catch (e) {
-      print('Error requesting exact alarm permission: $e');
-      return false;
-    }
-  }
-
-  /// ตรวจสอบสิทธิ์ Exact Alarm
-  Future<bool> hasExactAlarmPermission() async {
-    if (!Platform.isAndroid) return true;
-
-    try {
-      final status = await Permission.scheduleExactAlarm.status;
-      return status.isGranted;
-    } catch (e) {
-      print('Error checking exact alarm permission: $e');
-      return false;
-    }
-  }
-
-  /// ขออนุญาติ Schedule Exact Alarm (Android 14+)
+  // Request schedule exact alarm permission (Android 12+)
   Future<bool> requestScheduleExactAlarmPermission() async {
     if (!Platform.isAndroid) return true;
 
     try {
       final status = await Permission.scheduleExactAlarm.request();
-      print('Schedule exact alarm permission status: $status');
+      debugPrint('Schedule exact alarm permission status: $status');
       return status.isGranted;
     } catch (e) {
-      print('Error requesting schedule exact alarm permission: $e');
+      debugPrint('Error requesting schedule exact alarm permission: $e');
       return false;
     }
   }
 
-  /// ตรวจสอบสิทธิ์ Schedule Exact Alarm
+  // Check schedule exact alarm permission
   Future<bool> hasScheduleExactAlarmPermission() async {
     if (!Platform.isAndroid) return true;
 
     try {
       final status = await Permission.scheduleExactAlarm.status;
+      debugPrint('Current schedule exact alarm permission status: $status');
       return status.isGranted;
     } catch (e) {
-      print('Error checking schedule exact alarm permission: $e');
+      debugPrint('Error checking schedule exact alarm permission: $e');
       return false;
     }
   }
 
-  /// เปิดหน้าตั้งค่าแอป
+  // Request system alert window permission (for overlay notifications)
+  Future<bool> requestSystemAlertWindowPermission() async {
+    if (!Platform.isAndroid) return true;
+
+    try {
+      final status = await Permission.systemAlertWindow.request();
+      debugPrint('System alert window permission status: $status');
+      return status.isGranted;
+    } catch (e) {
+      debugPrint('Error requesting system alert window permission: $e');
+      return false;
+    }
+  }
+
+  // Check system alert window permission
+  Future<bool> hasSystemAlertWindowPermission() async {
+    if (!Platform.isAndroid) return true;
+
+    try {
+      final status = await Permission.systemAlertWindow.status;
+      debugPrint('Current system alert window permission status: $status');
+      return status.isGranted;
+    } catch (e) {
+      debugPrint('Error checking system alert window permission: $e');
+      return false;
+    }
+  }
+
+  // Request all necessary permissions
+  Future<Map<String, bool>> requestAllPermissions() async {
+    final results = <String, bool>{};
+
+    debugPrint('Requesting all permissions...');
+
+    // Notification permission
+    results['notification'] = await requestNotificationPermission();
+
+    // Schedule exact alarm permission (Android 12+)
+    if (Platform.isAndroid) {
+      results['scheduleExactAlarm'] =
+          await requestScheduleExactAlarmPermission();
+      results['systemAlertWindow'] = await requestSystemAlertWindowPermission();
+    }
+
+    debugPrint('Permission results: $results');
+    return results;
+  }
+
+  // Check all permission statuses
+  Future<Map<String, bool>> checkAllPermissions() async {
+    final results = <String, bool>{};
+
+    results['notification'] = await hasNotificationPermission();
+
+    if (Platform.isAndroid) {
+      results['scheduleExactAlarm'] = await hasScheduleExactAlarmPermission();
+      results['systemAlertWindow'] = await hasSystemAlertWindowPermission();
+    }
+
+    return results;
+  }
+
+  // Check if all required permissions are granted
+  Future<bool> hasAllRequiredPermissions() async {
+    final permissions = await checkAllPermissions();
+
+    // Notification is always required
+    if (permissions['notification'] != true) return false;
+
+    // Android specific permissions
+    if (Platform.isAndroid) {
+      if (permissions['scheduleExactAlarm'] != true) return false;
+    }
+
+    return true;
+  }
+
+  // Open app settings
   Future<bool> openAppSettings() async {
     try {
       return await openAppSettings();
     } catch (e) {
-      print('Error opening app settings: $e');
+      debugPrint('Error opening app settings: $e');
       return false;
     }
   }
 
-  /// แสดง Dialog แจ้งเตือนเรื่องสิทธิ์
-  Future<void> showPermissionDialog({
-    required String title,
-    required String message,
-    required String permissionType,
-    VoidCallback? onSettingsPressed,
-  }) async {
-    return Get.dialog(
-      AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('ยกเลิก'),
+  // Show permission dialog
+  Future<bool> showPermissionDialog(BuildContext context) async {
+    return await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Text('จำเป็นต้องได้รับอนุญาต'),
+            content: const Text(
+              'แอปนี้ต้องการอนุญาตในการส่งการแจ้งเตือนเพื่อช่วยเตือนคุณออกกำลังกาย\n\n'
+              'กรุณาอนุญาตการแจ้งเตือนในการตั้งค่า',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('ยกเลิก'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.of(context).pop(true);
+                  await openAppSettings();
+                },
+                child: const Text('ไปที่การตั้งค่า'),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              Get.back();
-              if (onSettingsPressed != null) {
-                onSettingsPressed();
-              } else {
-                openAppSettings();
-              }
-            },
-            child: const Text('ไปที่การตั้งค่า'),
-          ),
-        ],
-      ),
-      barrierDismissible: false,
-    );
+        ) ??
+        false;
   }
 
-  /// แสดง Dialog สำหรับ Notification Permission
-  Future<void> showNotificationPermissionDialog() async {
-    await showPermissionDialog(
-      title: 'จำเป็นต้องใช้การแจ้งเตือน',
-      message:
-          'แอปต้องการสิทธิ์ในการส่งการแจ้งเตือนเพื่อเตือนให้คุณออกกำลังกาย กรุณาอนุญาติในการตั้งค่า',
-      permissionType: 'notification',
-    );
-  }
-
-  /// แสดง Dialog สำหรับ Exact Alarm Permission
-  Future<void> showExactAlarmPermissionDialog() async {
-    await showPermissionDialog(
-      title: 'จำเป็นต้องใช้การตั้งเวลาที่แม่นยำ',
-      message:
-          'แอปต้องการสิทธิ์ในการตั้งการแจ้งเตือนที่เวลาที่แม่นยำ เพื่อให้การแจ้งเตือนทำงานได้ถูกต้อง',
-      permissionType: 'exactAlarm',
-    );
-  }
-
-  /// ตรวจสอบสิทธิ์ทั้งหมดและแสดง Dialog หากจำเป็น
-  Future<bool> checkAndRequestAllPermissions() async {
-    bool allGranted = true;
-
-    // ตรวจสอบ notification permission
-    if (!await hasNotificationPermission()) {
-      await showNotificationPermissionDialog();
-      final granted = await requestNotificationPermission();
-      if (!granted) {
-        allGranted = false;
-        print('Notification permission denied');
-      }
-    }
-
-    // ตรวจสอบ exact alarm permission (Android เท่านั้น)
-    if (Platform.isAndroid) {
-      if (!await hasExactAlarmPermission()) {
-        await showExactAlarmPermissionDialog();
-        final granted = await requestExactAlarmPermission();
-        if (!granted) {
-          allGranted = false;
-          print('Exact alarm permission denied');
-        }
-      }
-    }
-
-    return allGranted;
-  }
-
-  /// ได้สถานะสิทธิ์ทั้งหมด
-  Future<Map<String, PermissionStatus>> getAllPermissionStatuses() async {
-    final statuses = <String, PermissionStatus>{};
-
-    statuses['notification'] = await Permission.notification.status;
-
-    if (Platform.isAndroid) {
-      try {
-        statuses['scheduleExactAlarm'] =
-            await Permission.scheduleExactAlarm.status;
-      } catch (e) {
-        print('Error getting schedule exact alarm status: $e');
-        statuses['scheduleExactAlarm'] = PermissionStatus.denied;
-      }
-    }
-
-    return statuses;
-  }
-
-  /// แปลงสถานะ permission เป็นข้อความ
-  String getPermissionStatusText(PermissionStatus status) {
+  // Handle permission status with proper handling for different statuses
+  String getPermissionStatusMessage(PermissionStatus status) {
     switch (status) {
       case PermissionStatus.granted:
-        return 'อนุญาต';
+        return 'อนุญาตแล้ว';
       case PermissionStatus.denied:
-        return 'ไม่อนุญาต';
+        return 'ปฏิเสธ';
       case PermissionStatus.restricted:
-        return 'จำกัด';
-      case PermissionStatus.limitedGranted:
-        return 'อนุญาตบางส่วน';
+        return 'ถูกจำกัด';
       case PermissionStatus.permanentlyDenied:
         return 'ปฏิเสธถาวร';
+      case PermissionStatus.provisional:
+        return 'อนุญาตชั่วคราว';
+      // แทนที่ limitedGranted ด้วย limited
+      case PermissionStatus.limited:
+        return 'อนุญาตบางส่วน';
       default:
-        return 'ไม่ทราบ';
+        return 'ไม่ทราบสถานะ';
     }
   }
 
-  /// ตรวจสอบว่าสิทธิ์ที่จำเป็นทั้งหมดได้รับอนุญาต
-  Future<bool> areAllRequiredPermissionsGranted() async {
-    final hasNotification = await hasNotificationPermission();
-
-    if (Platform.isAndroid) {
-      final hasExactAlarm = await hasExactAlarmPermission();
-      return hasNotification && hasExactAlarm;
-    }
-
-    return hasNotification;
+  // Check if permission status allows notifications
+  bool isPermissionSufficient(PermissionStatus status) {
+    return status == PermissionStatus.granted ||
+        status == PermissionStatus.provisional ||
+        status == PermissionStatus.limited;
   }
 
-  /// แสดงสถานะสิทธิ์ในรูปแบบ Debug
-  Future<void> printAllPermissionStatuses() async {
-    print('=== Permission Status Debug ===');
+  // Request permission with retry logic
+  Future<PermissionStatus> requestPermissionWithRetry(
+    Permission permission, {
+    int maxRetries = 3,
+  }) async {
+    PermissionStatus status = await permission.status;
 
-    final statuses = await getAllPermissionStatuses();
-    for (final entry in statuses.entries) {
-      print('${entry.key}: ${getPermissionStatusText(entry.value)}');
-    }
+    for (int i = 0; i < maxRetries && !isPermissionSufficient(status); i++) {
+      debugPrint('Requesting permission attempt ${i + 1}/$maxRetries');
+      status = await permission.request();
 
-    print(
-        'All required permissions granted: ${await areAllRequiredPermissionsGranted()}');
-    print('==============================');
-  }
-
-  /// Handle permission result และแสดงข้อความเหมาะสม
-  String getPermissionResultMessage(String permissionType, bool granted) {
-    if (granted) {
-      switch (permissionType) {
-        case 'notification':
-          return 'สิทธิ์การแจ้งเตือนได้รับอนุญาตแล้ว';
-        case 'exactAlarm':
-          return 'สิทธิ์การตั้งเวลาแม่นยำได้รับอนุญาตแล้ว';
-        default:
-          return 'สิทธิ์ได้รับอนุญาตแล้ว';
-      }
-    } else {
-      switch (permissionType) {
-        case 'notification':
-          return 'ไม่สามารถใช้การแจ้งเตือนได้ กรุณาอนุญาติในการตั้งค่า';
-        case 'exactAlarm':
-          return 'การแจ้งเตือนอาจไม่ทำงานได้ตรงเวลา กรุณาอนุญาติในการตั้งค่า';
-        default:
-          return 'ไม่ได้รับอนุญาตสิทธิ์';
+      if (status == PermissionStatus.permanentlyDenied) {
+        debugPrint('Permission permanently denied, stopping retries');
+        break;
       }
     }
+
+    debugPrint('Final permission status: $status');
+    return status;
   }
 }

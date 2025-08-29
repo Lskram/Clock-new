@@ -1,106 +1,143 @@
-class AppConstants {
-  // App Information
-  static const String APP_NAME = 'Office Syndrome Helper';
-  static const String APP_VERSION = '1.0.0';
+// App Constants
+const String appName = 'Office Syndrome Helper';
+const String appVersion = '1.0.0';
 
-  // Pain Points Configuration
-  static const int MAX_SELECTED_PAIN_POINTS = 3;
-  static const int MIN_SELECTED_PAIN_POINTS = 1;
+// Pain Point Settings
+const int maxSelectedPainPoints = 5;
+const int minSelectedPainPoints = 1;
 
-  // Notification Configuration
-  static const int DEFAULT_INTERVAL_MINUTES = 60;
-  static const int MIN_INTERVAL_MINUTES = 15;
-  static const int MAX_INTERVAL_MINUTES = 240;
+// Notification Settings
+const int defaultIntervalMinutes = 60;
+const int minIntervalMinutes = 15;
+const int maxIntervalMinutes = 240;
 
-  // Snooze Configuration
-  static const int DEFAULT_MAX_SNOOZE_COUNT = 3;
-  static const List<int> DEFAULT_SNOOZE_INTERVALS = [5, 15, 30]; // minutes
+// Snooze Settings
+const int defaultMaxSnoozeCount = 3;
+const List<int> defaultSnoozeIntervals = [5, 10, 15];
 
-  // Working Time Configuration
-  static const int DEFAULT_WORK_START_HOUR = 9;
-  static const int DEFAULT_WORK_START_MINUTE = 0;
-  static const int DEFAULT_WORK_END_HOUR = 18;
-  static const int DEFAULT_WORK_END_MINUTE = 0;
-  static const List<int> DEFAULT_WORK_DAYS = [1, 2, 3, 4, 5]; // Mon-Fri
+// Work Time Defaults
+const int defaultWorkStartHour = 9;
+const int defaultWorkStartMinute = 0;
+const int defaultWorkEndHour = 17;
+const int defaultWorkEndMinute = 0;
+const List<int> defaultWorkDays = [1, 2, 3, 4, 5]; // Monday to Friday
 
-  // Treatment Configuration
-  static const int DEFAULT_TREATMENTS_PER_SESSION = 2;
-  static const int MIN_TREATMENT_DURATION = 10; // seconds
-  static const int MAX_TREATMENT_DURATION = 180; // seconds
+// Session Settings
+const int defaultTreatmentsPerSession = 3;
+const int minTreatmentDuration = 15; // seconds
+const int maxTreatmentDuration = 300; // seconds
 
-  // Statistics Configuration
-  static const int STATISTICS_KEEP_DAYS = 90;
-  static const int CLEANUP_OLD_SESSIONS_DAYS = 30;
+// Database Settings
+const int statisticsKeepDays = 90;
+const int cleanupOldSessionsDays = 30;
 
-  // UI Configuration
-  static const double DEFAULT_BORDER_RADIUS = 12.0;
-  static const double DEFAULT_PADDING = 16.0;
-  static const double DEFAULT_MARGIN = 8.0;
+// UI Constants
+const double defaultBorderRadius = 8.0;
+const double defaultPadding = 16.0;
+const double defaultMargin = 8.0;
 
-  // Animation Durations
-  static const int SPLASH_ANIMATION_DURATION = 2000; // milliseconds
-  static const int PAGE_TRANSITION_DURATION = 300; // milliseconds
-  static const int CARD_ANIMATION_DURATION = 200; // milliseconds
+// Animation Durations
+const int splashAnimationDuration = 2000; // milliseconds
+const int pageTransitionDuration = 300;
+const int cardAnimationDuration = 200;
 
-  // Notification IDs
-  static const int EXERCISE_REMINDER_ID = 1000;
-  static const int PERSISTENT_NOTIFICATION_ID = 1001;
+// Notification IDs
+const int exerciseReminderId = 1000;
+const int persistentNotificationId = 1001;
 
-  // File Paths
-  static const String ASSETS_IMAGES = 'assets/images/';
-  static const String ASSETS_ICONS = 'assets/icons/';
-  static const String ASSETS_SOUNDS = 'assets/sounds/';
-}
+// Asset Paths
+const String assetsImages = 'assets/images/';
+const String assetsIcons = 'assets/icons/';
+const String assetsSounds = 'assets/sounds/';
 
-class HiveBoxes {
-  static const String SETTINGS = 'settings';
-  static const String TREATMENTS = 'treatments';
-  static const String SESSIONS = 'sessions';
-}
+// Hive Box Names
+const String settingsBox = 'settings';
+const String treatmentsBox = 'treatments';
+const String sessionsBox = 'sessions';
 
-class HiveKeys {
-  static const String USER_SETTINGS = 'user_settings';
-}
+// Notification Channels
+const String userSettingsChannel = 'user_settings';
 
-class NotificationChannels {
-  // Android Notification Channels
-  static const String EXERCISE_REMINDERS = 'exercise_reminders';
-  static const String PERSISTENT_REMINDERS = 'persistent_reminders';
+// Notification Channel Details
+const String exerciseRemindersChannel = 'exercise_reminders';
+const String persistentRemindersChannel = 'persistent_reminders';
 
-  static const String EXERCISE_REMINDERS_NAME = 'การแจ้งเตือนออกกำลังกาย';
-  static const String EXERCISE_REMINDERS_DESC =
-      'แจ้งเตือนเมื่อถึงเวลาออกกำลังกาย';
+const String exerciseRemindersName = 'Exercise Reminders';
+const String exerciseRemindersDesc = 'Notifications for exercise breaks';
 
-  static const String PERSISTENT_REMINDERS_NAME = 'การแจ้งเตือนต่อเนื่อง';
-  static const String PERSISTENT_REMINDERS_DESC =
-      'การแจ้งเตือนที่จะแสดงต่อเนื่องจนกว่าจะทำเสร็จ';
-}
+const String persistentRemindersName = 'Persistent Reminders';
+const String persistentRemindersDesc = 'Always visible exercise reminders';
 
-class DateFormats {
-  static const String DISPLAY_DATE = 'dd/MM/yyyy';
-  static const String DISPLAY_TIME = 'HH:mm';
-  static const String DISPLAY_DATETIME = 'dd/MM/yyyy HH:mm';
-  static const String API_DATETIME = 'yyyy-MM-ddTHH:mm:ss.SSSZ';
-}
+// Date Time Formats
+const String displayDateFormat = 'dd/MM/yyyy';
+const String displayTimeFormat = 'HH:mm';
+const String displayDatetimeFormat = 'dd/MM/yyyy HH:mm';
+const String apiDatetimeFormat = 'yyyy-MM-ddTHH:mm:ss.SSSZ';
 
-class ValidationRules {
-  static const int MIN_TREATMENT_NAME_LENGTH = 3;
-  static const int MAX_TREATMENT_NAME_LENGTH = 50;
-  static const int MIN_TREATMENT_DESCRIPTION_LENGTH = 10;
-  static const int MAX_TREATMENT_DESCRIPTION_LENGTH = 200;
-}
+// Validation Constants
+const int minTreatmentNameLength = 2;
+const int maxTreatmentNameLength = 50;
+const int minTreatmentDescriptionLength = 10;
+const int maxTreatmentDescriptionLength = 200;
 
-class DefaultBreakTimes {
-  // ช่วงเวลาพักมาตรฐาน
-  static const Map<String, Map<String, int>> LUNCH_BREAK = {
-    'name': {'th': 'พักกลางวัน'},
-    'start': {'hour': 12, 'minute': 0},
-    'end': {'hour': 13, 'minute': 30},
-  };
+// Default Break Times (Key-Value pairs with proper types)
+const Map<String, Map<String, int>> defaultBreakTimes = {
+  'lunchBreak': {
+    'startHour': 12,
+    'startMinute': 0,
+    'endHour': 13,
+    'endMinute': 0,
+  },
+  'afternoonBreak': {
+    'startHour': 15,
+    'startMinute': 0,
+    'endHour': 15,
+    'endMinute': 15,
+  },
+};
 
-  static const Map<String, Map<String, int>> AFTERNOON_BREAK = {
-    'name': {'th': 'พักบ่าย'},
-    'start': {'hour': 15, 'minute': 0},
-    'end': {'hour': 15, 'minute': 15},
-  };
-}
+// Day Names (Thai)
+const List<String> dayNamesShort = ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'];
+const List<String> dayNamesLong = [
+  'วันจันทร์',
+  'วันอังคาร',
+  'วันพุธ',
+  'วันพฤหัสบดี',
+  'วันศุกร์',
+  'วันเสาร์',
+  'วันอาทิตย์',
+];
+
+// Categories
+const List<String> painPointCategories = [
+  'คอและไหล่',
+  'หลัง',
+  'ตา',
+  'แขนและมือ',
+  'ขาและเท้า',
+  'อื่นๆ',
+];
+
+const List<String> treatmentCategories = [
+  'การยืด',
+  'การออกกำลัง',
+  'การนวด',
+  'การผ่อนคลาย',
+  'การหายใจ',
+];
+
+// Error Messages
+const String errorNetworkConnection = 'ไม่สามารถเชื่อมต่อเครือข่ายได้';
+const String errorDataNotFound = 'ไม่พบข้อมูล';
+const String errorPermissionDenied = 'ไม่ได้รับอนุญาต';
+const String errorInvalidInput = 'ข้อมูลไม่ถูกต้อง';
+
+// Success Messages
+const String successDataSaved = 'บันทึกข้อมูลสำเร็จ';
+const String successDataUpdated = 'อัปเดตข้อมูลสำเร็จ';
+const String successDataDeleted = 'ลบข้อมูลสำเร็จ';
+
+// Theme Colors (Material Design)
+const int primaryColorValue = 0xFF2E7D32; // Green 800
+const int secondaryColorValue = 0xFF4CAF50; // Green 500
+const int accentColorValue = 0xFF8BC34A; // Light Green 500

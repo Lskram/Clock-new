@@ -1,133 +1,63 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
-
+import 'package:percent_indicator/percent_indicator.dart';
 import '../controllers/app_controller.dart';
 import '../controllers/notification_controller.dart';
-import '../controllers/statistics_controller.dart';
-import '../utils/colors.dart';
+import '../controllers/settings_controller.dart';
+import '../models/notification_session.dart';
+import '../models/treatment.dart';
+import '../utils/constants.dart';
 import '../routes/app_routes.dart';
 
-class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
-
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
-  final AppController _appController = Get.find<AppController>();
-  final NotificationController _notificationController =
-      Get.find<NotificationController>();
-  final StatisticsController _statisticsController =
-      Get.find<StatisticsController>();
-
-  late AnimationController _refreshAnimationController;
-  late Animation<double> _refreshAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeAnimations();
-    _loadData();
-  }
-
-  void _initializeAnimations() {
-    _refreshAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 1000),
-      vsync: this,
-    );
-
-    _refreshAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _refreshAnimationController,
-        curve: Curves.easeInOut,
-      ),
-    );
-  }
-
-  void _loadData() async {
-    await _statisticsController.loadTodayStats();
-  }
-
-  void _refreshData() async {
-    _refreshAnimationController.forward();
-    await _loadData();
-    _refreshAnimationController.reset();
-  }
-
-  @override
-  void dispose() {
-    _refreshAnimationController.dispose();
-    super.dispose();
-  }
+class HomePage extends StatelessWidget {
+  const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final appController = Get.find<AppController>();
+    final notificationController = Get.find<NotificationController>();
+    final settingsController = Get.find<SettingsController>();
+
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: RefreshIndicator(
-        onRefresh: () async => _refreshData(),
-        child: CustomScrollView(
-          slivers: [
-            // App Bar
-            _buildSliverAppBar(),
-
-            // Main Content
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    // Current Status Card
-                    _buildCurrentStatusCard(),
-
-                    const SizedBox(height: 16),
-
-                    // Today's Stats
-                    _buildTodayStatsCard(),
-
-                    const SizedBox(height: 16),
-
-                    // Selected Pain Points
-                    _buildSelectedPainPointsCard(),
-
-                    const SizedBox(height: 16),
-
-                    // Quick Actions
-                    _buildQuickActionsCard(),
-
-                    const SizedBox(height: 100), // Space for bottom navigation
-                  ],
-                ),
-              ),
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      body: CustomScrollView(
+        slivers: [
+          _buildSliverAppBar(context),
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                _buildWelcomeCard(context, settingsController),
+                const SizedBox(height: 16),
+                _buildQuickStatsCard(context, notificationController),
+                const SizedBox(height: 16),
+                _buildActiveSessionCard(context, notificationController),
+                const SizedBox(height: 16),
+                _buildQuickActionsCard(context),
+                const SizedBox(height: 16),
+                _buildRecentSessionsCard(context, notificationController),
+                const SizedBox(height: 100), // Bottom padding for FAB
+              ]),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-
-      // Bottom Navigation Bar
-      bottomNavigationBar: _buildBottomNavigationBar(),
-
-      // Floating Action Button
-      floatingActionButton: _buildFloatingActionButton(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButton: _buildFloatingActionButton(context),
     );
   }
 
-  Widget _buildSliverAppBar() {
+  Widget _buildSliverAppBar(BuildContext context) {
     return SliverAppBar(
       expandedHeight: 120,
-      floating: false,
+      floating: true,
       pinned: true,
-      backgroundColor: AppColors.primary,
-      foregroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
       flexibleSpace: FlexibleSpaceBar(
-        title: const Text(
+        title: Text(
           'Office Syndrome Helper',
           style: TextStyle(
+            color: Theme.of(context).colorScheme.onPrimaryContainer,
             fontWeight: FontWeight.w600,
-            fontSize: 18,
           ),
         ),
         background: Container(
@@ -136,526 +66,116 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                AppColors.primary,
-                AppColors.primaryDark,
+                Theme.of(context).colorScheme.primary,
+                Theme.of(context).colorScheme.primaryContainer,
               ],
             ),
           ),
         ),
       ),
       actions: [
-        AnimatedBuilder(
-          animation: _refreshAnimation,
-          builder: (context, child) {
-            return IconButton(
-              onPressed: _refreshData,
-              icon: Transform.rotate(
-                angle: _refreshAnimation.value * 2 * 3.14159,
-                child: const Icon(Icons.refresh),
-              ),
-            );
-          },
-        ),
         IconButton(
-          onPressed: () => Get.toNamed(AppRoutes.SETTINGS),
+          onPressed: () => Get.toNamed(AppRoutes.settings),
           icon: const Icon(Icons.settings),
+          tooltip: 'การตั้งค่า',
         ),
       ],
     );
   }
 
-  Widget _buildCurrentStatusCard() {
-    return Obx(() {
-      final settings = _appController.userSettings;
-      if (settings == null) return const SizedBox.shrink();
+  Widget _buildWelcomeCard(
+      BuildContext context, SettingsController settingsController) {
+    final now = DateTime.now();
+    final greeting = _getGreeting(now.hour);
 
-      return Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: AppColors.getGradient(0),
-            ),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.notifications_active,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'สถานะการแจ้งเตือน',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          settings.isNotificationEnabled
-                              ? 'เปิดใช้งาน'
-                              : 'ปิดใช้งาน',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Switch(
-                    value: settings.isNotificationEnabled,
-                    onChanged: (value) async {
-                      final updatedSettings = settings.copyWith(
-                        isNotificationEnabled: value,
-                      );
-                      await _appController.updateUserSettings(updatedSettings);
-                    },
-                    activeColor: Colors.white,
-                    activeTrackColor: Colors.white.withOpacity(0.3),
-                  ),
-                ],
-              ),
-              if (settings.isNotificationEnabled &&
-                  settings.nextNotificationTime != null) ...[
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.schedule,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'แจ้งเตือนครั้งถัดไป: ${_formatNextNotificationTime(settings.nextNotificationTime!)}',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      );
-    });
-  }
-
-  Widget _buildTodayStatsCard() {
-    return GetBuilder<StatisticsController>(
-      builder: (controller) {
-        final stats = controller.todayStats;
-
-        return Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.analytics,
-                      color: AppColors.primary,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'สถิติวันนี้',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: () => Get.toNamed(AppRoutes.STATISTICS),
-                      child: const Text('ดูเพิ่มเติม'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildStatItem(
-                        icon: Icons.notification_important,
-                        label: 'แจ้งเตือน',
-                        value: '${stats['total'] ?? 0}',
-                        color: AppColors.info,
-                      ),
-                    ),
-                    Expanded(
-                      child: _buildStatItem(
-                        icon: Icons.check_circle,
-                        label: 'เสร็จแล้ว',
-                        value: '${stats['completed'] ?? 0}',
-                        color: AppColors.success,
-                      ),
-                    ),
-                    Expanded(
-                      child: _buildStatItem(
-                        icon: Icons.skip_next,
-                        label: 'ข้าม',
-                        value: '${stats['skipped'] ?? 0}',
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-                if (stats['total'] != null && stats['total'] > 0) ...[
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      const Text(
-                        'อัตราความสำเร็จ: ',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      Text(
-                        '${((stats['completed'] ?? 0) / stats['total'] * 100).toInt()}%',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.success,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildSelectedPainPointsCard() {
-    return Obx(() {
-      final selectedPainPoints = _appController.getSelectedPainPoints();
-
-      return Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.my_location,
-                    color: AppColors.primary,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'จุดที่กำลังดูแล',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const Spacer(),
-                  TextButton(
-                    onPressed: () => Get.toNamed(AppRoutes.SETTINGS),
-                    child: const Text('แก้ไข'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              if (selectedPainPoints.isNotEmpty)
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: selectedPainPoints.map((painPoint) {
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.getPainPointColor(painPoint.id - 1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.health_and_safety,
-                            size: 16,
-                            color: AppColors.primary,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            painPoint.name,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                )
-              else
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceVariant,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Center(
-                    child: Text(
-                      'ยังไม่ได้เลือกจุดที่ต้องการดูแล',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      );
-    });
-  }
-
-  Widget _buildQuickActionsCard() {
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'การดำเนินการด่วน',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(
-                  child: _buildQuickActionButton(
-                    icon: Icons.play_circle_fill,
-                    label: 'เริ่มออกกำลัง',
-                    color: AppColors.success,
-                    onTap: () {
-                      // TODO: Start immediate session
-                      Get.snackbar(
-                          'เร็วๆ นี้', 'ฟีเจอร์นี้จะเปิดใช้งานเร็วๆ นี้');
-                    },
-                  ),
+                Icon(
+                  Icons.waving_hand,
+                  color: Colors.orange.withValues(alpha: 0.8),
+                  size: 28,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _buildQuickActionButton(
-                    icon: Icons.history,
-                    label: 'ประวัติ',
-                    color: AppColors.info,
-                    onTap: () => Get.toNamed(AppRoutes.STATISTICS),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        greeting,
+                        style:
+                            Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'พร้อมดูแลสุขภาพกันแล้วหรือยัง?',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.grey.withValues(alpha: 0.8),
+                            ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+            Obx(() {
+              final selectedPainPoints =
+                  settingsController.settings.selectedPainPoints;
+              if (selectedPainPoints.isEmpty) {
+                return _buildSetupPrompt(context);
+              }
+              return _buildPainPointsSummary(context, selectedPainPoints);
+            }),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildStatItem({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-  }) {
-    return Column(
-      children: [
-        Icon(
-          icon,
-          color: color,
-          size: 24,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: AppColors.textSecondary,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQuickActionButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: color.withOpacity(0.3),
-            width: 1,
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              color: color,
-              size: 32,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: color,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
+  Widget _buildSetupPrompt(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context)
+            .colorScheme
+            .secondaryContainer
+            .withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.3),
         ),
       ),
-    );
-  }
-
-  Widget _buildBottomNavigationBar() {
-    return BottomAppBar(
-      shape: const CircularNotchedRectangle(),
-      notchMargin: 8,
-      child: SizedBox(
-        height: 60,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildBottomNavItem(
-              icon: Icons.home,
-              label: 'หน้าหลัก',
-              isSelected: true,
-              onTap: () {},
-            ),
-            _buildBottomNavItem(
-              icon: Icons.analytics,
-              label: 'สถิติ',
-              isSelected: false,
-              onTap: () => Get.toNamed(AppRoutes.STATISTICS),
-            ),
-            const SizedBox(width: 40), // Space for FAB
-            _buildBottomNavItem(
-              icon: Icons.fitness_center,
-              label: 'ท่าออกกำลัง',
-              isSelected: false,
-              onTap: () {
-                Get.snackbar('เร็วๆ นี้', 'ฟีเจอร์นี้จะเปิดใช้งานเร็วๆ นี้');
-              },
-            ),
-            _buildBottomNavItem(
-              icon: Icons.settings,
-              label: 'การตั้งค่า',
-              isSelected: false,
-              onTap: () => Get.toNamed(AppRoutes.SETTINGS),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBottomNavItem({
-    required IconData icon,
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
-            color: isSelected ? AppColors.primary : AppColors.textSecondary,
-            size: 24,
-          ),
-          const SizedBox(height: 4),
           Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              color: isSelected ? AppColors.primary : AppColors.textSecondary,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            'เริ่มต้นใช้งาน',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.onSecondaryContainer,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'กรุณาตั้งค่าจุดปวดเมื่อยที่คุณต้องการดูแลเพื่อเริ่มรับการแจ้งเตือน',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => Get.toNamed(AppRoutes.questionnaire),
+              icon: const Icon(Icons.play_arrow),
+              label: const Text('เริ่มตั้งค่า'),
             ),
           ),
         ],
@@ -663,41 +183,554 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildFloatingActionButton() {
-    return Obx(() {
-      final hasActiveSession = _notificationController.isSessionActive.value;
+  Widget _buildPainPointsSummary(
+      BuildContext context, List<String> selectedPainPoints) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Theme.of(context)
+                .colorScheme
+                .primaryContainer
+                .withValues(alpha: 0.3),
+            Theme.of(context)
+                .colorScheme
+                .secondaryContainer
+                .withValues(alpha: 0.3),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'จุดที่กำลังดูแล',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: selectedPainPoints.map((pointId) {
+              return Chip(
+                label: Text(
+                  _getPainPointName(pointId),
+                  style: const TextStyle(fontSize: 12),
+                ),
+                backgroundColor: Theme.of(context).colorScheme.surface,
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
 
-      return FloatingActionButton(
-        onPressed: () {
-          if (hasActiveSession) {
-            Get.toNamed(AppRoutes.TODO);
-          } else {
-            // Test notification
-            Get.snackbar('ทดสอบ', 'ส่งการแจ้งเตือนทดสอบแล้ว');
-          }
-        },
-        backgroundColor:
-            hasActiveSession ? AppColors.warning : AppColors.primary,
-        child: Icon(
-          hasActiveSession ? Icons.play_arrow : Icons.add,
-          color: Colors.white,
+  Widget _buildQuickStatsCard(
+      BuildContext context, NotificationController controller) {
+    return Obx(() {
+      final sessions = controller.recentSessions;
+      final todayCompleted = sessions.where((session) {
+        return session.isCompleted &&
+            _isSameDay(
+                session.completedTime ?? session.scheduledTime, DateTime.now());
+      }).length;
+
+      final weekCompleted = sessions.where((session) {
+        return session.isCompleted &&
+            _isThisWeek(session.completedTime ?? session.scheduledTime);
+      }).length;
+
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'สถิติการออกกำลัง',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatItem(
+                      context,
+                      icon: Icons.today,
+                      label: 'วันนี้',
+                      value: todayCompleted.toString(),
+                      color: Colors.blue,
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 40,
+                    color: Colors.grey.withValues(alpha: 0.3),
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                  ),
+                  Expanded(
+                    child: _buildStatItem(
+                      context,
+                      icon: Icons.date_range,
+                      label: 'สัปดาห์นี้',
+                      value: weekCompleted.toString(),
+                      color: Colors.green,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       );
     });
   }
 
-  String _formatNextNotificationTime(DateTime time) {
-    final now = DateTime.now();
-    final difference = time.difference(now);
+  Widget _buildStatItem(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 24),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+        ),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
+    );
+  }
 
-    if (difference.inDays > 0) {
-      return DateFormat('dd/MM/yyyy HH:mm').format(time);
-    } else if (difference.inHours > 0) {
-      return 'อีก ${difference.inHours} ชั่วโมง ${difference.inMinutes % 60} นาที';
-    } else if (difference.inMinutes > 0) {
-      return 'อีก ${difference.inMinutes} นาที';
-    } else {
-      return 'เร็วๆ นี้';
+  Widget _buildActiveSessionCard(
+      BuildContext context, NotificationController controller) {
+    return Obx(() {
+      final activeSession = controller.currentSession.value;
+
+      if (activeSession == null) {
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.self_improvement,
+                  size: 48,
+                  color: Colors.grey.withValues(alpha: 0.5),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'ไม่มีเซสชันที่ใช้งานอยู่',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'รอการแจ้งเตือนครั้งต่อไป',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey.withValues(alpha: 0.7),
+                      ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _startImmediateSession(context),
+                    icon: const Icon(Icons.play_arrow),
+                    label: const Text('เริ่มเซสชันทันที'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      return _buildActiveSessionDetails(context, activeSession, controller);
+    });
+  }
+
+  Widget _buildActiveSessionDetails(
+    BuildContext context,
+    NotificationSession session,
+    NotificationController controller,
+  ) {
+    final progress = session.completionProgress;
+
+    return Card(
+      color:
+          Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.fitness_center,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'เซสชันที่กำลังดำเนินการ',
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                      ),
+                      Text(
+                        '${session.completedTreatmentIds.length}/${session.treatmentIds.length} รายการเสร็จสิ้น',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            LinearPercentIndicator(
+              percent: progress,
+              backgroundColor: Colors.grey.withValues(alpha: 0.3),
+              progressColor: Theme.of(context).colorScheme.primary,
+              lineHeight: 8,
+              barRadius: const Radius.circular(4),
+              animation: true,
+              animationDuration: 500,
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => controller.pauseSession(),
+                    icon: const Icon(Icons.pause),
+                    label: const Text('หยุดชั่วคราว'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => Get.toNamed(AppRoutes.todo),
+                    icon: const Icon(Icons.play_arrow),
+                    label: const Text('ดำเนินการต่อ'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActionsCard(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'เมนูด่วน',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 16),
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              childAspectRatio: 1.2,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              children: [
+                _buildActionButton(
+                  context,
+                  icon: Icons.list_alt,
+                  label: 'รายการท่า',
+                  onTap: () => Get.toNamed(AppRoutes.settingsTreatments),
+                ),
+                _buildActionButton(
+                  context,
+                  icon: Icons.bar_chart,
+                  label: 'สถิติ',
+                  onTap: () => Get.toNamed(AppRoutes.statistics),
+                ),
+                _buildActionButton(
+                  context,
+                  icon: Icons.healing,
+                  label: 'จุดปวดเมื่อย',
+                  onTap: () => Get.toNamed(AppRoutes.settingsPainPoints),
+                ),
+                _buildActionButton(
+                  context,
+                  icon: Icons.notifications,
+                  label: 'การแจ้งเตือน',
+                  onTap: () => Get.toNamed(AppRoutes.settingsNotification),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 32,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecentSessionsCard(
+      BuildContext context, NotificationController controller) {
+    return Obx(() {
+      final recentSessions = controller.recentSessions.take(5).toList();
+
+      if (recentSessions.isEmpty) {
+        return const SizedBox.shrink();
+      }
+
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    'เซสชันล่าสุด',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () => Get.toNamed(AppRoutes.statistics),
+                    child: const Text('ดูทั้งหมด'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              ...recentSessions
+                  .map((session) => _buildSessionTile(context, session)),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+
+  Widget _buildSessionTile(BuildContext context, NotificationSession session) {
+    final statusColor = _getSessionStatusColor(session.status);
+    final statusIcon = _getSessionStatusIcon(session.status);
+    final displayTime = session.completedTime ?? session.scheduledTime;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(statusIcon, color: statusColor, size: 16),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${session.treatmentIds.length} ท่าการออกกำลัง',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                ),
+                Text(
+                  _formatDateTime(displayTime),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey.withValues(alpha: 0.7),
+                      ),
+                ),
+              ],
+            ),
+          ),
+          if (session.isCompleted)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                'เสร็จสิ้น',
+                style: TextStyle(
+                  color: Colors.green,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFloatingActionButton(BuildContext context) {
+    return FloatingActionButton.extended(
+      onPressed: () => _startImmediateSession(context),
+      icon: const Icon(Icons.play_arrow),
+      label: const Text('เริ่มออกกำลัง'),
+      tooltip: 'เริ่มเซสชันออกกำลังทันที',
+    );
+  }
+
+  // Helper Methods
+  String _getGreeting(int hour) {
+    if (hour < 12) return 'สวัสดีตอนเช้า';
+    if (hour < 17) return 'สวัสดีตอนบ่าย';
+    return 'สวัสดีตอนเย็น';
+  }
+
+  String _getPainPointName(String pointId) {
+    // This should be replaced with actual data lookup
+    final painPointNames = {
+      'neck_pain': 'ปวดคอ',
+      'shoulder_pain': 'ปวดไหล่',
+      'back_pain': 'ปวดหลัง',
+      'eye_strain': 'ปวดตา',
+      'wrist_pain': 'ปวดข้อมือ',
+    };
+    return painPointNames[pointId] ?? pointId;
+  }
+
+  bool _isSameDay(DateTime date1, DateTime date2) {
+    return date1.year == date2.year &&
+        date1.month == date2.month &&
+        date1.day == date2.day;
+  }
+
+  bool _isThisWeek(DateTime date) {
+    final now = DateTime.now();
+    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+    final endOfWeek = startOfWeek.add(const Duration(days: 6));
+
+    return date.isAfter(startOfWeek.subtract(const Duration(days: 1))) &&
+        date.isBefore(endOfWeek.add(const Duration(days: 1)));
+  }
+
+  Color _getSessionStatusColor(NotificationStatus status) {
+    switch (status) {
+      case NotificationStatus.completed:
+        return Colors.green;
+      case NotificationStatus.snoozed:
+        return Colors.orange;
+      case NotificationStatus.skipped:
+        return Colors.grey;
+      case NotificationStatus.dismissed:
+        return Colors.red;
+      default:
+        return Colors.blue;
     }
+  }
+
+  IconData _getSessionStatusIcon(NotificationStatus status) {
+    switch (status) {
+      case NotificationStatus.completed:
+        return Icons.check_circle;
+      case NotificationStatus.snoozed:
+        return Icons.snooze;
+      case NotificationStatus.skipped:
+        return Icons.skip_next;
+      case NotificationStatus.dismissed:
+        return Icons.close;
+      default:
+        return Icons.schedule;
+    }
+  }
+
+  String _formatDateTime(DateTime dateTime) {
+    final now = DateTime.now();
+    if (_isSameDay(dateTime, now)) {
+      return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+    }
+    return '${dateTime.day}/${dateTime.month} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+  }
+
+  void _startImmediateSession(BuildContext context) {
+    // TODO: Implement immediate session start
+    Get.toNamed(AppRoutes.todo);
   }
 }

@@ -2,82 +2,83 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:timezone/data/latest_all.dart' as tz;
-import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-import 'app.dart';
-import 'models/pain_point.dart';
-import 'models/treatment.dart';
-import 'models/user_settings.dart';
-import 'models/notification_session.dart';
+// Models and Adapters
+import 'models/hive_adapters.dart';
+
+// Services
 import 'services/database_service.dart';
 import 'services/notification_service.dart';
 import 'services/permission_service.dart';
+
+// Controllers
 import 'controllers/app_controller.dart';
 import 'controllers/notification_controller.dart';
-import 'controllers/settings_controller.dart';
 import 'controllers/statistics_controller.dart';
+import 'controllers/settings_controller.dart';
+
+// App
+import 'app.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize timezone
-  tz.initializeTimeZones();
+  try {
+    // Initialize Hive
+    await Hive.initFlutter();
 
-  // Initialize Hive
-  await _initializeHive();
+    // Register all Hive Adapters using the centralized helper
+    HiveAdapters.registerAll();
 
-  // Initialize services
-  await _initializeServices();
+    // Initialize timezone
+    tz.initializeTimeZones();
 
-  // Initialize controllers
-  _initializeControllers();
+    // Initialize services
+    await _initializeServices();
 
-  runApp(const OfficesyndromeHelperApp());
-}
+    // Set system UI
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
 
-Future<void> _initializeHive() async {
-  await Hive.initFlutter();
+    print('App initialization completed successfully');
+  } catch (e) {
+    debugPrint('Error during app initialization: $e');
+  }
 
-  // Register adapters
-  Hive.registerAdapter(PainPointAdapter());
-  Hive.registerAdapter(TreatmentAdapter());
-  Hive.registerAdapter(UserSettingsAdapter());
-  Hive.registerAdapter(NotificationSessionAdapter());
-  Hive.registerAdapter(NotificationStatusAdapter());
-  Hive.registerAdapter(BreakTimeAdapter());
-  Hive.registerAdapter(TimeOfDayAdapter());
+  runApp(MyApp());
+
+  print('App started');
 }
 
 Future<void> _initializeServices() async {
-  // Initialize database service first
-  await Get.putAsync(() => DatabaseService().init());
+  try {
+    // Initialize and register services
+    final settingsController = SettingsController();
+    Get.put<SettingsController>(settingsController, permanent: true);
 
-  // Initialize other services
-  await Get.putAsync(() => NotificationService().init());
-  await Get.putAsync(() => PermissionService().init());
+    final databaseService = DatabaseService();
+    await databaseService.initialize();
+    Get.put<DatabaseService>(databaseService, permanent: true);
 
-  // Initialize Android Alarm Manager (Android only)
-  if (GetPlatform.isAndroid) {
-    try {
-      await AndroidAlarmManager.initialize();
-    } catch (e) {
-      print('Failed to initialize Android Alarm Manager: $e');
-    }
+    final permissionService = PermissionService();
+    Get.put<PermissionService>(permissionService, permanent: true);
+
+    final notificationService = NotificationService();
+    await notificationService.initialize();
+    Get.put<NotificationService>(notificationService, permanent: true);
+
+    // Initialize controllers
+    Get.put<AppController>(AppController(), permanent: true);
+    Get.put<NotificationController>(NotificationController(), permanent: true);
+    Get.put<StatisticsController>(StatisticsController(), permanent: true);
+  } catch (e) {
+    debugPrint('Error initializing services: $e');
+    rethrow;
   }
-}
-
-void _initializeControllers() {
-  // Initialize controllers with dependencies
-  Get.put(AppController());
-  Get.put(NotificationController());
-  Get.put(SettingsController());
-  Get.put(StatisticsController());
-}
-
-// Callback function สำหรับ alarm manager
-@pragma('vm:entry-point')
-void backgroundAlarmCallback() {
-  print('Background alarm triggered!');
-  // จะเรียก NotificationService เพื่อแสดง notification
 }

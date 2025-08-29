@@ -1,236 +1,375 @@
 import 'dart:math';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-
-import '../models/pain_point.dart';
 import '../models/treatment.dart';
-import '../utils/constants.dart';
-import 'database_service.dart';
+import '../models/pain_point.dart';
+import '../models/user_settings.dart';
+import '../services/database_service.dart';
 
-class RandomService extends GetxService {
+class RandomService {
   final DatabaseService _databaseService = Get.find<DatabaseService>();
   final Random _random = Random();
 
-  // Initialize method for GetxService
-  Future<RandomService> init() async {
-    return this;
+  // Generate random treatments based on user's selected pain points
+  Future<List<Treatment>> generateRandomTreatments({
+    required UserSettings settings,
+    int? count,
+  }) async {
+    try {
+      final treatmentCount = count ?? settings.treatmentsPerSession;
+      final selectedPainPoints = settings.selectedPainPoints;
+
+      if (selectedPainPoints.isEmpty) {
+        debugPrint('No pain points selected, returning empty list');
+        return [];
+      }
+
+      // Get all available treatments
+      final allTreatments = await _databaseService.getAllTreatments();
+
+      if (allTreatments.isEmpty) {
+        debugPrint('No treatments available');
+        return [];
+      }
+
+      // Filter treatments based on selected pain points
+      final relevantTreatments = allTreatments.where((treatment) {
+        return treatment.targetPainPoints.any(
+          (painPointId) => selectedPainPoints.contains(painPointId),
+        );
+      }).toList();
+
+      if (relevantTreatments.isEmpty) {
+        debugPrint('No relevant treatments found for selected pain points');
+        // If no relevant treatments found, return random treatments from all
+        return _selectRandomTreatmentsFromList(allTreatments, treatmentCount);
+      }
+
+      return _selectRandomTreatmentsFromList(
+          relevantTreatments, treatmentCount);
+    } catch (e) {
+      debugPrint('Error generating random treatments: $e');
+      return [];
+    }
   }
 
-  /// สุ่มเลือกท่าออกกำลังกายสำหรับ notification session
-  /// Returns: {'painPointId': int, 'treatmentIds': List<String>}
-  Future<Map<String, dynamic>> selectRandomTreatments(
-    List<int> availablePainPointIds,
-  ) async {
-    if (availablePainPointIds.isEmpty) {
-      throw Exception('No pain points available for selection');
+  // Select random treatments from a list (แก้ไข return type)
+  List<Treatment> _selectRandomTreatmentsFromList(
+      List<Treatment> treatments, int count) {
+    if (treatments.isEmpty) return <Treatment>[];
+
+    final shuffled = List<Treatment>.from(treatments);
+    shuffled.shuffle(_random);
+
+    // Return requested count or all available treatments (whichever is smaller)
+    final actualCount = math.min(count, shuffled.length);
+    return shuffled.take(actualCount).toList();
+  }
+
+  // Generate balanced treatment selection (mix of different categories)
+  Future<List<Treatment>> generateBalancedTreatments({
+    required UserSettings settings,
+    int? count,
+  }) async {
+    try {
+      final treatmentCount = count ?? settings.treatmentsPerSession;
+      final selectedPainPoints = settings.selectedPainPoints;
+
+      if (selectedPainPoints.isEmpty) return [];
+
+      final allTreatments = await _databaseService.getAllTreatments();
+
+      // Group treatments by category
+      final treatmentsByCategory = <String, List<Treatment>>{};
+      for (final treatment in allTreatments) {
+        if (treatment.targetPainPoints.any(
+          (painPointId) => selectedPainPoints.contains(painPointId),
+        )) {
+          treatmentsByCategory.putIfAbsent(treatment.category, () => []);
+          treatmentsByCategory[treatment.category]!.add(treatment);
+        }
+      }
+
+      final selectedTreatments = <Treatment>[];
+      final categories = treatmentsByCategory.keys.toList();
+      categories.shuffle(_random);
+
+      // Try to get at least one treatment from each category
+      int treatmentsPerCategory = treatmentCount ~/ categories.length;
+      int remainingTreatments = treatmentCount % categories.length;
+
+      for (final category in categories) {
+        final categoryTreatments = treatmentsByCategory[category]!;
+        categoryTreatments.shuffle(_random);
+
+        final countForCategory =
+            treatmentsPerCategory + (remainingTreatments > 0 ? 1 : 0);
+
+        if (remainingTreatments > 0) remainingTreatments--;
+
+        final actualCount =
+            math.min(countForCategory, categoryTreatments.length);
+        selectedTreatments.addAll(categoryTreatments.take(actualCount));
+      }
+
+      // If we still need more treatments, add randomly from remaining
+      if (selectedTreatments.length < treatmentCount) {
+        final remaining = allTreatments
+            .where((t) => !selectedTreatments.contains(t))
+            .where((t) => t.targetPainPoints.any(
+                  (painPointId) => selectedPainPoints.contains(painPointId),
+                ))
+            .toList();
+
+        remaining.shuffle(_random);
+        final needed = treatmentCount - selectedTreatments.length;
+        selectedTreatments.addAll(remaining.take(needed));
+      }
+
+      selectedTreatments.shuffle(_random);
+      return selectedTreatments;
+    } catch (e) {
+      debugPrint('Error generating balanced treatments: $e');
+      return [];
+    }
+  }
+
+  // Generate treatments with difficulty progression
+  Future<List<Treatment>> generateProgressiveTreatments({
+    required UserSettings settings,
+    int? count,
+  }) async {
+    try {
+      final treatmentCount = count ?? settings.treatmentsPerSession;
+      final selectedPainPoints = settings.selectedPainPoints;
+
+      if (selectedPainPoints.isEmpty) return [];
+
+      final allTreatments = await _databaseService.getAllTreatments();
+      final relevantTreatments = allTreatments.where((treatment) {
+        return treatment.targetPainPoints.any(
+          (painPointId) => selectedPainPoints.contains(painPointId),
+        );
+      }).toList();
+
+      if (relevantTreatments.isEmpty) return [];
+
+      // Group by difficulty
+      final treatmentsByDifficulty = <int, List<Treatment>>{};
+      for (final treatment in relevantTreatments) {
+        treatmentsByDifficulty.putIfAbsent(treatment.difficulty, () => []);
+        treatmentsByDifficulty[treatment.difficulty]!.add(treatment);
+      }
+
+      final selectedTreatments = <Treatment>[];
+      final difficulties = treatmentsByDifficulty.keys.toList()..sort();
+
+      // Distribute treatments across difficulties
+      int treatmentsPerDifficulty = treatmentCount ~/ difficulties.length;
+      int remainingTreatments = treatmentCount % difficulties.length;
+
+      for (final difficulty in difficulties) {
+        final difficultyTreatments = treatmentsByDifficulty[difficulty]!;
+        difficultyTreatments.shuffle(_random);
+
+        final countForDifficulty =
+            treatmentsPerDifficulty + (remainingTreatments > 0 ? 1 : 0);
+
+        if (remainingTreatments > 0) remainingTreatments--;
+
+        final actualCount =
+            math.min(countForDifficulty, difficultyTreatments.length);
+        selectedTreatments.addAll(difficultyTreatments.take(actualCount));
+      }
+
+      return selectedTreatments;
+    } catch (e) {
+      debugPrint('Error generating progressive treatments: $e');
+      return [];
+    }
+  }
+
+  // Generate next notification time within work hours
+  DateTime generateNextNotificationTime(UserSettings settings) {
+    final now = DateTime.now();
+    final intervalMinutes = settings.notificationIntervalMinutes;
+
+    // Start from next interval
+    final nextTime = now.add(Duration(minutes: intervalMinutes));
+
+    return _adjustToWorkHours(nextTime, settings);
+  }
+
+  // Generate multiple future notification times
+  List<DateTime> generateNotificationSchedule({
+    required UserSettings settings,
+    required int days,
+  }) {
+    final schedule = <DateTime>[];
+    final now = DateTime.now();
+
+    for (int day = 0; day < days; day++) {
+      final targetDate = now.add(Duration(days: day));
+
+      // Skip if not a work day
+      if (!settings.isWorkDay(targetDate)) continue;
+
+      final daySchedule = _generateDaySchedule(targetDate, settings);
+      schedule.addAll(daySchedule);
     }
 
-    // สุ่มเลือก 1 จุดจาก pain points ที่ผู้ใช้เลือกไว้
-    final selectedPainPointId =
-        availablePainPointIds[_random.nextInt(availablePainPointIds.length)];
+    return schedule;
+  }
 
-    // หาท่าออกกำลังกายทั้งหมดสำหรับจุดนี้
-    final availableTreatments =
-        await _getTreatmentsForPainPoint(selectedPainPointId);
-
-    if (availableTreatments.isEmpty) {
-      throw Exception(
-          'No treatments available for pain point: $selectedPainPointId');
-    }
-
-    // สุ่มเลือก 2 ท่า (หรือน้อยกว่าถ้ามีไม่พอ)
-    final selectedTreatments = _selectRandomTreatmentsFromList(
-      availableTreatments,
-      AppConstants.DEFAULT_TREATMENTS_PER_SESSION,
+  // Generate schedule for a single day
+  List<DateTime> _generateDaySchedule(DateTime date, UserSettings settings) {
+    final schedule = <DateTime>[];
+    final workStart = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      settings.workStartTime.hour,
+      settings.workStartTime.minute,
     );
 
-    return {
-      'painPointId': selectedPainPointId,
-      'treatmentIds': selectedTreatments.map((t) => t.id).toList(),
-    };
-  }
+    final workEnd = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      settings.workEndTime.hour,
+      settings.workEndTime.minute,
+    );
 
-  /// หาท่าออกกำลังกายทั้งหมดสำหรับ pain point นั้นๆ
-  Future<List<Treatment>> _getTreatmentsForPainPoint(int painPointId) async {
-    // รวม default treatments และ custom treatments
-    final defaultTreatments =
-        TreatmentData.getTreatmentsByPainPoint(painPointId);
-    final customTreatments = await _databaseService.getCustomTreatments();
+    final intervalMinutes = settings.notificationIntervalMinutes;
+    DateTime currentTime = workStart;
 
-    final painPointCustomTreatments =
-        customTreatments.where((t) => t.painPointId == painPointId).toList();
-
-    return [...defaultTreatments, ...painPointCustomTreatments];
-  }
-
-  /// สุ่มเลือกท่าออกกำลังกายจาก list
-  List<Treatment> _selectRandomTreatmentsFromList(
-    List<Treatment> treatments,
-    int count,
-  ) {
-    if (treatments.length <= count) {
-      // ถ้ามีท่าไม่พอ ให้เอาทั้งหมด
-      return List.from(treatments)..shuffle(_random);
+    while (currentTime.isBefore(workEnd)) {
+      schedule.add(currentTime);
+      currentTime = currentTime.add(Duration(minutes: intervalMinutes));
     }
 
-    // สุ่มเลือกจำนวนที่ต้องการ
-    final shuffled = List.from(treatments)..shuffle(_random);
-    return shuffled.take(count).toList();
+    return schedule;
   }
 
-  /// สุ่มเลือก pain point จาก list (สำหรับ testing)
-  int selectRandomPainPoint(List<int> painPointIds) {
-    if (painPointIds.isEmpty) {
-      throw Exception('No pain points available');
-    }
-    return painPointIds[_random.nextInt(painPointIds.length)];
-  }
+  // Adjust time to fall within work hours
+  DateTime _adjustToWorkHours(DateTime time, UserSettings settings) {
+    final date = time;
+    final workStart = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      settings.workStartTime.hour,
+      settings.workStartTime.minute,
+    );
 
-  /// สุ่มเลือกช่วงเวลา snooze
-  int selectRandomSnoozeInterval(List<int> availableIntervals) {
-    if (availableIntervals.isEmpty) {
-      return AppConstants.DEFAULT_SNOOZE_INTERVALS.first;
-    }
-    return availableIntervals[_random.nextInt(availableIntervals.length)];
-  }
+    final workEnd = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      settings.workEndTime.hour,
+      settings.workEndTime.minute,
+    );
 
-  /// ได้ชื่อ pain point จาก ID
-  Future<String> getPainPointName(int painPointId) async {
-    final painPoints = PainPointData.getAllPainPoints();
-    final painPoint = painPoints.firstWhereOrNull((pp) => pp.id == painPointId);
-    return painPoint?.name ?? 'ไม่ระบุ';
-  }
-
-  /// ได้ treatment จาก ID
-  Future<Treatment?> getTreatment(String treatmentId) async {
-    // ลองหาจาก default treatments ก่อน
-    final defaultTreatments = TreatmentData.getAllTreatments();
-    final defaultTreatment =
-        defaultTreatments.firstWhereOrNull((t) => t.id == treatmentId);
-
-    if (defaultTreatment != null) {
-      return defaultTreatment;
+    // If before work hours, set to work start
+    if (time.isBefore(workStart)) {
+      return workStart;
     }
 
-    // หาจาก custom treatments
-    return await _databaseService.getTreatment(treatmentId);
+    // If after work hours, move to next work day
+    if (time.isAfter(workEnd)) {
+      return _findNextWorkDay(time, settings);
+    }
+
+    return time;
   }
 
-  /// คำนวณระยะเวลาทั้งหมดของ session
-  Future<Duration> calculateSessionDuration(List<String> treatmentIds) async {
-    int totalSeconds = 0;
+  // Find next work day start time
+  DateTime _findNextWorkDay(DateTime fromTime, UserSettings settings) {
+    DateTime nextDay = DateTime(
+      fromTime.year,
+      fromTime.month,
+      fromTime.day + 1,
+      settings.workStartTime.hour,
+      settings.workStartTime.minute,
+    );
 
-    for (final treatmentId in treatmentIds) {
-      final treatment = await getTreatment(treatmentId);
-      if (treatment != null) {
-        totalSeconds += treatment.durationSeconds;
+    // Keep looking for next work day
+    while (!settings.isWorkDay(nextDay)) {
+      nextDay = nextDay.add(const Duration(days: 1));
+    }
+
+    return nextDay;
+  }
+
+  // Generate random delay (for more natural notifications)
+  Duration generateRandomDelay({int maxMinutes = 5}) {
+    final randomMinutes = _random.nextInt(maxMinutes + 1);
+    return Duration(minutes: randomMinutes);
+  }
+
+  // Check if current time is suitable for notifications
+  bool isGoodTimeForNotification(UserSettings settings) {
+    final now = DateTime.now();
+
+    // Check if it's a work day
+    if (!settings.isWorkDay(now)) return false;
+
+    // Check if it's within work hours
+    if (!settings.isWorkTime(TimeOfDay.fromDateTime(now))) return false;
+
+    return true;
+  }
+
+  // Generate weighted random selection (favor less-used treatments)
+  Future<List<Treatment>> generateWeightedTreatments({
+    required UserSettings settings,
+    int? count,
+  }) async {
+    try {
+      final treatmentCount = count ?? settings.treatmentsPerSession;
+      final selectedPainPoints = settings.selectedPainPoints;
+
+      if (selectedPainPoints.isEmpty) return [];
+
+      final allTreatments = await _databaseService.getAllTreatments();
+      final relevantTreatments = allTreatments.where((treatment) {
+        return treatment.targetPainPoints.any(
+          (painPointId) => selectedPainPoints.contains(painPointId),
+        );
+      }).toList();
+
+      if (relevantTreatments.isEmpty) return [];
+
+      // Calculate weights (inverse of completion count)
+      final maxCompletions = relevantTreatments
+          .map((t) => t.completedCount)
+          .fold<int>(0, math.max);
+
+      final weightedTreatments = <Treatment>[];
+      for (final treatment in relevantTreatments) {
+        // Higher weight for less-used treatments
+        final weight = maxCompletions - treatment.completedCount + 1;
+        for (int i = 0; i < weight; i++) {
+          weightedTreatments.add(treatment);
+        }
       }
-    }
 
-    return Duration(seconds: totalSeconds);
-  }
+      weightedTreatments.shuffle(_random);
+      final selectedTreatments = <Treatment>[];
+      final usedTreatments = <String>{};
 
-  /// สร้าง summary ของ session
-  Future<Map<String, dynamic>> createSessionSummary(
-    int painPointId,
-    List<String> treatmentIds,
-  ) async {
-    final painPointName = await getPainPointName(painPointId);
-    final treatments = <Treatment>[];
-    int totalDuration = 0;
+      for (final treatment in weightedTreatments) {
+        if (usedTreatments.contains(treatment.id)) continue;
+        selectedTreatments.add(treatment);
+        usedTreatments.add(treatment.id);
 
-    for (final treatmentId in treatmentIds) {
-      final treatment = await getTreatment(treatmentId);
-      if (treatment != null) {
-        treatments.add(treatment);
-        totalDuration += treatment.durationSeconds;
+        if (selectedTreatments.length >= treatmentCount) break;
       }
+
+      return selectedTreatments;
+    } catch (e) {
+      debugPrint('Error generating weighted treatments: $e');
+      return [];
     }
-
-    return {
-      'painPointName': painPointName,
-      'treatments': treatments,
-      'totalDurationSeconds': totalDuration,
-      'totalDurationFormatted':
-          _formatDuration(Duration(seconds: totalDuration)),
-    };
-  }
-
-  String _formatDuration(Duration duration) {
-    final minutes = duration.inMinutes;
-    final seconds = duration.inSeconds % 60;
-
-    if (minutes > 0) {
-      return '${minutes} นาที ${seconds} วินาที';
-    } else {
-      return '${seconds} วินาที';
-    }
-  }
-
-  /// สุ่มข้อความสำหรับ notification (เพิ่มความหลากหลาย)
-  String getRandomMotivationalMessage() {
-    final messages = [
-      'มาออกกำลังกายกันเถอะ! 💪',
-      'ถึงเวลาดูแลสุขภาพแล้ว! 🌟',
-      'พักหน้าจอสักครู่ มาขยับกันดีกว่า! 🤸‍♀️',
-      'แค่ 2-3 นาที จะช่วยให้สดชื่นขึ้นเยอะ! ✨',
-      'ร่างกายต้องการการเคลื่อนไหว! 🏃‍♂️',
-      'มาคลายเครียดด้วยการออกกำลังกายกัน! 😌',
-      'สุขภาพดีเริ่มจากการดูแลตัวเอง! ❤️',
-      'ขยับนิดหน่อย สดชื่นล้นหล่น! 🌈',
-    ];
-
-    return messages[_random.nextInt(messages.length)];
-  }
-
-  /// สุ่มเลือก emoji สำหรับ pain point
-  String getRandomPainPointEmoji(int painPointId) {
-    final emojiMap = {
-      1: ['🧠', '🤕', '😵'], // ศีรษะ
-      2: ['👀', '😴', '💤'], // ตา
-      3: ['💆‍♂️', '💆‍♀️', '🤲'], // คอ
-      4: ['💪', '🤸‍♀️', '🙆‍♂️'], // บ่าและไหล่
-      5: ['🧘‍♂️', '🧘‍♀️', '🤸'], // หลังส่วนบน
-      6: ['🦴', '💺', '🪑'], // หลังส่วนล่าง
-      7: ['💪', '🤲', '👐'], // แขน/ศอก
-      8: ['👋', '✋', '🖐️'], // ข้อมือ/มือ/นิ้ว
-      9: ['🦵', '🚶‍♂️', '🚶‍♀️'], // ขา
-      10: ['👣', '🦶', '🩴'], // เท้า
-    };
-
-    final emojis = emojiMap[painPointId] ?? ['💆'];
-    return emojis[_random.nextInt(emojis.length)];
-  }
-
-  /// สุ่มเลือกสี gradient สำหรับ UI
-  int getRandomGradientIndex() {
-    return _random.nextInt(5); // 0-4 ตาม AppColors.gradients
-  }
-
-  /// Generate unique session greeting
-  String generateSessionGreeting() {
-    final timeOfDay = DateTime.now().hour;
-    final greetings = <String>[];
-
-    if (timeOfDay < 12) {
-      greetings.addAll([
-        'อรุณสวัสดิ์! เริ่มวันใหม่ด้วยการดูแลตัวเอง 🌅',
-        'สวัสดีตอนเช้า! มาเริ่มต้นวันด้วยความสดชื่น ☀️',
-        'เช้าดี! ร่างกายพร้อมแล้วสำหรับการออกกำลัง 🌱',
-      ]);
-    } else if (timeOfDay < 17) {
-      greetings.addAll([
-        'ช่วงกลางวัน พักผ่อนสักครู่กับการออกกำลังกาย ⏰',
-        'แวะมาดูแลสุขภาพกลางวันกันเถอะ 🕐',
-        'หยุดพักสักครู่ มาขยับร่างกายกัน 🌞',
-      ]);
-    } else {
-      greetings.addAll([
-        'ช่วงเย็น เวลาดีสำหรับการผ่อนคลาย 🌆',
-        'ใกล้หมดงานแล้ว มาคลายความเมื่อยล้า 🌇',
-        'เย็นดี! มาทำให้ร่างกายสดชื่นก่อนกลับบ้าน ✨',
-      ]);
-    }
-
-    return greetings[_random.nextInt(greetings.length)];
   }
 }

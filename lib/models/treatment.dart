@@ -3,261 +3,416 @@ import 'package:hive/hive.dart';
 @HiveType(typeId: 1)
 class Treatment extends HiveObject {
   @HiveField(0)
-  final String id;
+  String id;
 
   @HiveField(1)
-  final int painPointId;
+  String name;
 
   @HiveField(2)
-  final String name;
+  String description;
 
   @HiveField(3)
-  final String description;
+  List<String> instructions;
 
   @HiveField(4)
-  final int durationSeconds;
+  int durationSeconds;
 
   @HiveField(5)
-  final String? imagePath;
+  String category;
 
   @HiveField(6)
-  final bool isCustom;
+  String? imagePath;
+
+  @HiveField(7)
+  String? videoPath;
+
+  @HiveField(8)
+  List<String> targetPainPoints;
+
+  @HiveField(9)
+  int difficulty; // 1-5
+
+  @HiveField(10)
+  bool isDefault;
+
+  @HiveField(11)
+  DateTime createdAt;
+
+  @HiveField(12)
+  DateTime updatedAt;
+
+  @HiveField(13)
+  int completedCount;
 
   Treatment({
     required this.id,
-    required this.painPointId,
     required this.name,
     required this.description,
+    required this.instructions,
     required this.durationSeconds,
+    required this.category,
     this.imagePath,
-    this.isCustom = false,
+    this.videoPath,
+    this.targetPainPoints = const [],
+    this.difficulty = 1,
+    this.isDefault = false,
+    required this.createdAt,
+    required this.updatedAt,
+    this.completedCount = 0,
   });
 
-  Treatment copyWith({
-    String? id,
-    int? painPointId,
-    String? name,
-    String? description,
-    int? durationSeconds,
+  factory Treatment.create({
+    required String name,
+    required String description,
+    required List<String> instructions,
+    required int durationSeconds,
+    required String category,
     String? imagePath,
-    bool? isCustom,
+    String? videoPath,
+    List<String>? targetPainPoints,
+    int difficulty = 1,
+    bool isDefault = false,
   }) {
+    final now = DateTime.now();
     return Treatment(
-      id: id ?? this.id,
-      painPointId: painPointId ?? this.painPointId,
-      name: name ?? this.name,
-      description: description ?? this.description,
-      durationSeconds: durationSeconds ?? this.durationSeconds,
-      imagePath: imagePath ?? this.imagePath,
-      isCustom: isCustom ?? this.isCustom,
+      id: '${now.millisecondsSinceEpoch}_${name.hashCode}',
+      name: name,
+      description: description,
+      instructions: instructions,
+      durationSeconds: durationSeconds,
+      category: category,
+      imagePath: imagePath,
+      videoPath: videoPath,
+      targetPainPoints: targetPainPoints ?? [],
+      difficulty: difficulty,
+      isDefault: isDefault,
+      createdAt: now,
+      updatedAt: now,
     );
   }
-}
 
-// ข้อมูลท่าออกกำลังกายทั้งหมด
-class TreatmentData {
-  static List<Treatment> getAllTreatments() {
-    return [
-      // ศีรษะ (3 ท่า)
-      Treatment(
-        id: 'T1',
-        painPointId: 1,
-        name: 'หายใจลึก ผ่อนคลาย',
-        description: 'นั่งตัวตรง หลับตา หายใจเข้า-ออกลึกๆ ผ่อนคลายจิตใจ',
-        durationSeconds: 30,
-      ),
-      Treatment(
-        id: 'T2',
-        painPointId: 1,
-        name: 'กดจุดคลายเครียด',
-        description: 'ใช้นิ้วชี้กดจุดระหว่างคิ้วเบาๆ ผ่อนคลายกล้ามเนื้อหน้าผาก',
-        durationSeconds: 10,
-      ),
-      Treatment(
-        id: 'T3',
-        painPointId: 1,
-        name: 'นวดขมับเป็นวงกลม',
-        description: 'นวดเบาๆ ที่ขมับเป็นวงกลมทั้งสองข้าง ช่วยผ่อนคลาย',
-        durationSeconds: 30,
-      ),
-
-      // ตา (3 ท่า)
-      Treatment(
-        id: 'T4',
-        painPointId: 2,
-        name: 'พักสายตา หลับลืมตา',
-        description: 'หลับตาแน่น 5 วินาที แล้วลืมตา ทำซ้ำ 5 รอบ',
-        durationSeconds: 25,
-      ),
-      Treatment(
-        id: 'T5',
-        painPointId: 2,
-        name: 'กฎ 20-20-20',
-        description: 'มองไกลออกไป 20 ฟุต เป็นเวลา 20 วินาที ผ่อนคลายสายตา',
-        durationSeconds: 20,
-      ),
-      Treatment(
-        id: 'T6',
-        painPointId: 2,
-        name: 'กลิ้งลูกตาทุกทิศทาง',
-        description: 'กลิ้งลูกตามองบน-ล่าง-ซ้าย-ขวา ช้าๆ เพื่อยืดกล้ามเนื้อตา',
-        durationSeconds: 30,
-      ),
-
-      // คอ (2 ท่า)
-      Treatment(
-        id: 'T7',
-        painPointId: 3,
-        name: 'เคลื่อนไหวคอทุกทิศทาง',
-        description: 'ก้มคางแตะอก > เงยหน้า > หันซ้าย > หันขวา ช้าๆ',
-        durationSeconds: 40,
-      ),
-      Treatment(
-        id: 'T8',
-        painPointId: 3,
-        name: 'ยืดคอข้างใช้มือช่วย',
-        description: 'เอียงคอไปข้างหนึ่ง ใช้มือกดเบาๆ ค้าง 10 วิ สลับข้าง',
-        durationSeconds: 20,
-      ),
-
-      // บ่าและไหล่ (3 ท่า)
-      Treatment(
-        id: 'T9',
-        painPointId: 4,
-        name: 'ยกไหล่ขึ้น-ลง',
-        description: 'ยกไหล่ทั้งสองข้างขึ้นให้สูงสุด แล้วปล่อยลง ทำ 10 ครั้ง',
-        durationSeconds: 30,
-      ),
-      Treatment(
-        id: 'T10',
-        painPointId: 4,
-        name: 'หมุนไหล่ไปหน้า-หลัง',
-        description: 'หมุนไหล่ไปข้างหน้า 10 รอบ แล้วย้อนกลับ 10 รอบ',
-        durationSeconds: 40,
-      ),
-      Treatment(
-        id: 'T11',
-        painPointId: 4,
-        name: 'ดันไหล่เข้าหากัน',
-        description: 'ดันไหล่ทั้งสองข้างเข้าหากันด้านหลัง ค้าง 5 วิ ทำ 5 ครั้ง',
-        durationSeconds: 25,
-      ),
-
-      // หลังส่วนบน (3 ท่า)
-      Treatment(
-        id: 'T12',
-        painPointId: 5,
-        name: 'ประสานมือยืดไปหน้า',
-        description: 'ประสานมือยืดแขนไปข้างหน้า ค้าง 15 วิ ผ่อนคลายหลัง',
-        durationSeconds: 30,
-      ),
-      Treatment(
-        id: 'T13',
-        painPointId: 5,
-        name: 'ยืดแขนข้ามอก',
-        description: 'ยืดแขนข้างหนึ่งข้ามอก ใช้มืออีกข้างดึง ค้าง 15 วิ',
-        durationSeconds: 15,
-      ),
-      Treatment(
-        id: 'T14',
-        painPointId: 5,
-        name: 'หมุนลำตัวซ้าย-ขวา',
-        description: 'นั่งหมุนลำตัวไปซ้าย-ขวา ช้าๆ เพื่อคลายกล้ามเนื้อหลัง',
-        durationSeconds: 35,
-      ),
-
-      // หลังส่วนล่าง (2 ท่า)
-      Treatment(
-        id: 'T15',
-        painPointId: 6,
-        name: 'โค้งหลังแล้วงอ',
-        description: 'โค้งหลังออกข้างหลัง แล้วงอตัวไปข้างหน้า สลับกัน',
-        durationSeconds: 40,
-      ),
-      Treatment(
-        id: 'T16',
-        painPointId: 6,
-        name: 'หมุนเอวเป็นวงกลม',
-        description: 'ยืนหมุนเอวเป็นวงกลม ทั้งซ้าย-ขวา ช้าๆ',
-        durationSeconds: 30,
-      ),
-
-      // แขน/ศอก (2 ท่า)
-      Treatment(
-        id: 'T17',
-        painPointId: 7,
-        name: 'งอ-เหยียดแขน',
-        description: 'งอแขนแล้วเหยียดตรง สลับทั้งสองข้าง ทำ 10 ครั้ง',
-        durationSeconds: 30,
-      ),
-      Treatment(
-        id: 'T18',
-        painPointId: 7,
-        name: 'หมุนศอกเป็นวงกลม',
-        description: 'หมุนศอกเป็นวงกลม ทั้งทิศทางหน้า-หลัง',
-        durationSeconds: 25,
-      ),
-
-      // ข้อมือ/มือ/นิ้ว (3 ท่า)
-      Treatment(
-        id: 'T19',
-        painPointId: 8,
-        name: 'งอ-เหยียดข้อมือ',
-        description: 'งอข้อมือขึ้น-ลง ช้าๆ ทั้งสองข้าง ทำ 10 ครั้ง',
-        durationSeconds: 30,
-      ),
-      Treatment(
-        id: 'T20',
-        painPointId: 8,
-        name: 'หมุนข้อมือทั้งสองทาง',
-        description: 'หมุนข้อมือทั้งทิศทางขวา-ซ้าย ช้าๆ',
-        durationSeconds: 25,
-      ),
-      Treatment(
-        id: 'T21',
-        painPointId: 8,
-        name: 'กำมือแล้วกาง',
-        description: 'กำมือแน่น 5 วิ แล้วกางนิ้วออกให้สุด ทำ 5 ครั้ง',
-        durationSeconds: 25,
-      ),
-
-      // ขา (2 ท่า)
-      Treatment(
-        id: 'T22',
-        painPointId: 9,
-        name: 'ยกเข่าสลับข้าง',
-        description: 'นั่งยกเข่าสลับซ้าย-ขวา ทำ 10 ครั้งแต่ละข้าง',
-        durationSeconds: 40,
-      ),
-      Treatment(
-        id: 'T23',
-        painPointId: 9,
-        name: 'เหยียดขาตรงออก',
-        description: 'นั่งเหยียดขาตรงออกข้างหน้า สลับข้าง ค้าง 10 วิ',
-        durationSeconds: 30,
-      ),
-
-      // เท้า (2 ท่า)
-      Treatment(
-        id: 'T24',
-        painPointId: 10,
-        name: 'งอ-เหยียดปลายเท้า',
-        description: 'งอปลายเท้าขึ้น-ลง ช้าๆ ทั้งสองข้าง',
-        durationSeconds: 30,
-      ),
-      Treatment(
-        id: 'T25',
-        painPointId: 10,
-        name: 'หมุนข้อเท้าเป็นวงกลม',
-        description: 'หมุนข้อเท้าเป็นวงกลม ทั้งทิศทางซ้าย-ขวา',
-        durationSeconds: 35,
-      ),
-    ];
+  Treatment copyWith({
+    String? name,
+    String? description,
+    List<String>? instructions,
+    int? durationSeconds,
+    String? category,
+    String? imagePath,
+    String? videoPath,
+    List<String>? targetPainPoints,
+    int? difficulty,
+    bool? isDefault,
+    int? completedCount,
+  }) {
+    return Treatment(
+      id: id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      instructions: instructions ?? List.from(this.instructions),
+      durationSeconds: durationSeconds ?? this.durationSeconds,
+      category: category ?? this.category,
+      imagePath: imagePath ?? this.imagePath,
+      videoPath: videoPath ?? this.videoPath,
+      targetPainPoints: targetPainPoints ?? List.from(this.targetPainPoints),
+      difficulty: difficulty ?? this.difficulty,
+      isDefault: isDefault ?? this.isDefault,
+      createdAt: createdAt,
+      updatedAt: DateTime.now(),
+      completedCount: completedCount ?? this.completedCount,
+    );
   }
 
-  static List<Treatment> getTreatmentsByPainPoint(int painPointId) {
-    return getAllTreatments()
-        .where((t) => t.painPointId == painPointId)
-        .toList();
+  void incrementCompletedCount() {
+    completedCount++;
+    save(); // Save to Hive
+  }
+
+  String get formattedDuration {
+    final minutes = durationSeconds ~/ 60;
+    final seconds = durationSeconds % 60;
+    if (minutes > 0) {
+      return '${minutes}นาที ${seconds}วินาทีน';
+    }
+    return '${seconds}วินาที';
+  }
+
+  String get difficultyText {
+    switch (difficulty) {
+      case 1:
+        return 'ง่ายมาก';
+      case 2:
+        return 'ง่าย';
+      case 3:
+        return 'ปานกลาง';
+      case 4:
+        return 'ยาก';
+      case 5:
+        return 'ยากมาก';
+      default:
+        return 'ปานกลาง';
+    }
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+      'instructions': instructions,
+      'durationSeconds': durationSeconds,
+      'category': category,
+      'imagePath': imagePath,
+      'videoPath': videoPath,
+      'targetPainPoints': targetPainPoints,
+      'difficulty': difficulty,
+      'isDefault': isDefault,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+      'completedCount': completedCount,
+    };
+  }
+
+  factory Treatment.fromJson(Map<String, dynamic> json) {
+    return Treatment(
+      id: json['id'],
+      name: json['name'],
+      description: json['description'],
+      instructions: List<String>.from(json['instructions']),
+      durationSeconds: json['durationSeconds'],
+      category: json['category'],
+      imagePath: json['imagePath'],
+      videoPath: json['videoPath'],
+      targetPainPoints: List<String>.from(json['targetPainPoints'] ?? []),
+      difficulty: json['difficulty'] ?? 1,
+      isDefault: json['isDefault'] ?? false,
+      createdAt: DateTime.parse(json['createdAt']),
+      updatedAt: DateTime.parse(json['updatedAt']),
+      completedCount: json['completedCount'] ?? 0,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Treatment && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
+
+  @override
+  String toString() {
+    return 'Treatment(id: $id, name: $name, duration: ${formattedDuration})';
+  }
+
+  // Static method to create default treatments
+  static List<Treatment> getDefaultTreatments() {
+    final now = DateTime.now();
+    return [
+      // Neck Treatments
+      Treatment(
+        id: 'neck_stretch_1',
+        name: 'การหมุนคอ',
+        description: 'หมุนคอช้าๆ เพื่อลดความเครียดของกล้ามเนื้อคอ',
+        instructions: [
+          'นั่งหรือยืนตัวตรง',
+          'หมุนคอไปทางซ้ายช้าๆ 5 รอบ',
+          'หมุนคอไปทางขวาช้าๆ 5 รอบ',
+          'ทำซ้ำ 2-3 เซต',
+        ],
+        durationSeconds: 60,
+        category: 'คอและไหล่',
+        imagePath: 'assets/images/exercise_illustrations/neck_rotation.png',
+        targetPainPoints: ['neck_pain'],
+        difficulty: 1,
+        isDefault: true,
+        createdAt: now,
+        updatedAt: now,
+      ),
+      Treatment(
+        id: 'neck_stretch_2',
+        name: 'การยืดคอข้าง',
+        description: 'ยืดกล้ามเนื้อด้านข้างของคอ',
+        instructions: [
+          'นั่งตัวตรง มือขวาจับที่เก้าอี้',
+          'เอียงหัวไปทางซ้าย',
+          'ใช้มือซ้ายดึงหัวเบาๆ',
+          'ค้างไว้ 15-30 วินาที',
+          'สลับข้าง',
+        ],
+        durationSeconds: 90,
+        category: 'คอและไหล่',
+        imagePath: 'assets/images/exercise_illustrations/neck_side_stretch.png',
+        targetPainPoints: ['neck_pain'],
+        difficulty: 2,
+        isDefault: true,
+        createdAt: now,
+        updatedAt: now,
+      ),
+      // Shoulder Treatments
+      Treatment(
+        id: 'shoulder_roll',
+        name: 'การหมุนไหล่',
+        description: 'หมุนไหล่เพื่อคลายความตึงเครียด',
+        instructions: [
+          'ยืนหรือนั่งตัวตรง',
+          'ยกไหล่ขึ้นหมุนไปข้างหลัง 10 รอบ',
+          'หมุนไปข้างหน้า 10 รอบ',
+          'ทำทั้งสองข้างพร้อมกัน',
+        ],
+        durationSeconds: 45,
+        category: 'คอและไหล่',
+        imagePath: 'assets/images/exercise_illustrations/shoulder_roll.png',
+        targetPainPoints: ['shoulder_pain'],
+        difficulty: 1,
+        isDefault: true,
+        createdAt: now,
+        updatedAt: now,
+      ),
+      Treatment(
+        id: 'shoulder_stretch',
+        name: 'การยืดไหล่',
+        description: 'ยืดกล้ามเนื้อไหล่และหลังส่วนบน',
+        instructions: [
+          'ยืนตัวตรง',
+          'ยกแขนขวาข้ามหน้าอก',
+          'ใช้มือซ้ายดึงแขนขวาเข้าหาตัว',
+          'ค้างไว้ 15-30 วินาที',
+          'สลับข้าง',
+        ],
+        durationSeconds: 75,
+        category: 'คอและไหล่',
+        imagePath: 'assets/images/exercise_illustrations/shoulder_stretch.png',
+        targetPainPoints: ['shoulder_pain'],
+        difficulty: 2,
+        isDefault: true,
+        createdAt: now,
+        updatedAt: now,
+      ),
+      // Eye Treatments
+      Treatment(
+        id: 'eye_exercise',
+        name: 'การออกกำลังตา',
+        description: 'การเคลื่อนไหวลูกตาเพื่อลดอาการเมื่อยล้า',
+        instructions: [
+          'นั่งตัวตรง',
+          'มองขึ้นด้านบน ค้าง 2 วินาที',
+          'มองลงด้านล่าง ค้าง 2 วินาที',
+          'มองซ้าย-ขวา ค้างข้างละ 2 วินาที',
+          'หมุนลูกตาตามเข็มนาฬิกา 5 รอบ',
+          'หมุนทวนเข็มนาฬิกา 5 รอบ',
+        ],
+        durationSeconds: 60,
+        category: 'ตา',
+        imagePath: 'assets/images/exercise_illustrations/eye_exercise.png',
+        targetPainPoints: ['eye_strain'],
+        difficulty: 1,
+        isDefault: true,
+        createdAt: now,
+        updatedAt: now,
+      ),
+      Treatment(
+        id: 'blink_exercise',
+        name: 'การกะพริบตา',
+        description: 'การกะพริบตาช้าๆ เพื่อให้ความชุมชื้นกับตา',
+        instructions: [
+          'นั่งสบายๆ',
+          'กะพริบตาช้าๆ และแรงๆ',
+          'ค้างหลับตา 2 วินาที',
+          'ลืมตาช้าๆ',
+          'ทำซ้ำ 10-15 ครั้ง',
+        ],
+        durationSeconds: 30,
+        category: 'ตา',
+        imagePath: 'assets/images/exercise_illustrations/blink_exercise.png',
+        targetPainPoints: ['eye_strain'],
+        difficulty: 1,
+        isDefault: true,
+        createdAt: now,
+        updatedAt: now,
+      ),
+      // Back Treatments
+      Treatment(
+        id: 'back_stretch',
+        name: 'การยืดหลัง',
+        description: 'ยืดกล้ามเนื้อหลังส่วนบนและล่าง',
+        instructions: [
+          'นั่งบนเก้าอี้',
+          'เอียงตัวข้างหน้า',
+          'ให้แขนห้อยลงตรง',
+          'ค้างไว้ 15-30 วินาที',
+          'กลับสู่ท่าเริ่มต้นช้าๆ',
+        ],
+        durationSeconds: 60,
+        category: 'หลัง',
+        imagePath: 'assets/images/exercise_illustrations/back_stretch.png',
+        targetPainPoints: ['back_pain'],
+        difficulty: 2,
+        isDefault: true,
+        createdAt: now,
+        updatedAt: now,
+      ),
+      Treatment(
+        id: 'spinal_twist',
+        name: 'การบิดกระดูกสันหลัง',
+        description: 'บิดตัวเพื่อยืดกล้ามเนื้อหลัง',
+        instructions: [
+          'นั่งตัวตรงบนเก้าอี้',
+          'วางมือขวาบนขาซ้าย',
+          'บิดตัวไปทางซ้าย',
+          'ค้างไว้ 15-30 วินาที',
+          'สลับข้าง',
+        ],
+        durationSeconds: 90,
+        category: 'หลัง',
+        imagePath: 'assets/images/exercise_illustrations/spinal_twist.png',
+        targetPainPoints: ['back_pain'],
+        difficulty: 2,
+        isDefault: true,
+        createdAt: now,
+        updatedAt: now,
+      ),
+      // Wrist Treatments
+      Treatment(
+        id: 'wrist_stretch',
+        name: 'การยืดข้อมือ',
+        description: 'ยืดกล้ามเนื้อข้อมือและนิ้วมือ',
+        instructions: [
+          'ยื่นแขนออกข้างหน้า',
+          'งอข้อมือขึ้น ฝ่ามือหันออก',
+          'ใช้มืออีกข้างดึงนิ้วเข้าหาตัว',
+          'ค้างไว้ 15-30 วินาที',
+          'สลับข้าง',
+        ],
+        durationSeconds: 75,
+        category: 'แขนและมือ',
+        imagePath: 'assets/images/exercise_illustrations/wrist_stretch.png',
+        targetPainPoints: ['wrist_pain'],
+        difficulty: 2,
+        isDefault: true,
+        createdAt: now,
+        updatedAt: now,
+      ),
+      Treatment(
+        id: 'hand_exercise',
+        name: 'การออกกำลังมือ',
+        description: 'การเคลื่อนไหวมือและนิ้วมือ',
+        instructions: [
+          'กำมือแน่น แล้วคลายออก',
+          'ทำ 10 ครั้ง',
+          'แยกนิ้วออกให้กว้างที่สุด',
+          'ค้างไว้ 5 วินาที แล้วคลาย',
+          'ทำ 10 ครั้ง',
+        ],
+        durationSeconds: 60,
+        category: 'แขนและมือ',
+        imagePath: 'assets/images/exercise_illustrations/hand_exercise.png',
+        targetPainPoints: ['wrist_pain'],
+        difficulty: 1,
+        isDefault: true,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    ];
   }
 }

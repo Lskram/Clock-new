@@ -1,229 +1,203 @@
+import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
-@HiveType(typeId: 4)
+@HiveType(typeId: 2)
 class UserSettings extends HiveObject {
   @HiveField(0)
-  List<int> selectedPainPointIds;
-
+  bool notificationsEnabled;
+  
   @HiveField(1)
-  bool isNotificationEnabled;
-
+  int notificationIntervalMinutes;
+  
   @HiveField(2)
-  int intervalMinutes;
-
-  @HiveField(3)
   TimeOfDay workStartTime;
-
-  @HiveField(4)
+  
+  @HiveField(3)
   TimeOfDay workEndTime;
-
+  
+  @HiveField(4)
+  List<int> workDays; // 1=Monday, 7=Sunday
+  
   @HiveField(5)
-  List<int> workDays; // 1-7 (จันทร์-อาทิตย์)
-
+  List<String> selectedPainPoints;
+  
   @HiveField(6)
-  List<BreakTime> breakTimes;
-
+  int treatmentsPerSession;
+  
   @HiveField(7)
-  bool isSoundEnabled;
-
-  @HiveField(8)
-  bool isVibrationEnabled;
-
-  @HiveField(9)
   int maxSnoozeCount;
-
+  
+  @HiveField(8)
+  List<int> snoozeIntervals; // in minutes
+  
+  @HiveField(9)
+  ThemeMode themeMode;
+  
   @HiveField(10)
-  List<int> snoozeIntervals; // นาที [5, 15, 30]
-
+  String language;
+  
   @HiveField(11)
-  bool isFirstTimeSetup;
-
+  bool soundEnabled;
+  
   @HiveField(12)
-  DateTime? lastNotificationTime;
-
+  bool vibrationEnabled;
+  
   @HiveField(13)
-  DateTime? nextNotificationTime;
+  double volume;
 
   UserSettings({
-    this.selectedPainPointIds = const [],
-    this.isNotificationEnabled = true,
-    this.intervalMinutes = 60,
-    this.workStartTime = const TimeOfDay(hour: 9, minute: 0),
-    this.workEndTime = const TimeOfDay(hour: 18, minute: 0),
-    this.workDays = const [1, 2, 3, 4, 5], // จ-ศ
-    this.breakTimes = const [],
-    this.isSoundEnabled = true,
-    this.isVibrationEnabled = true,
+    this.notificationsEnabled = true,
+    this.notificationIntervalMinutes = 60,
+    required this.workStartTime,
+    required this.workEndTime,
+    required this.workDays,
+    this.selectedPainPoints = const [],
+    this.treatmentsPerSession = 3,
     this.maxSnoozeCount = 3,
-    this.snoozeIntervals = const [5, 15, 30],
-    this.isFirstTimeSetup = true,
-    this.lastNotificationTime,
-    this.nextNotificationTime,
+    this.snoozeIntervals = const [5, 10, 15],
+    this.themeMode = ThemeMode.system,
+    this.language = 'th',
+    this.soundEnabled = true,
+    this.vibrationEnabled = true,
+    this.volume = 0.8,
   });
 
-  UserSettings copyWith({
-    List<int>? selectedPainPointIds,
-    bool? isNotificationEnabled,
-    int? intervalMinutes,
-    TimeOfDay? workStartTime,
-    TimeOfDay? workEndTime,
-    List<int>? workDays,
-    List<BreakTime>? breakTimes,
-    bool? isSoundEnabled,
-    bool? isVibrationEnabled,
-    int? maxSnoozeCount,
-    List<int>? snoozeIntervals,
-    bool? isFirstTimeSetup,
-    DateTime? lastNotificationTime,
-    DateTime? nextNotificationTime,
-  }) {
+  factory UserSettings.defaultSettings() {
     return UserSettings(
-      selectedPainPointIds: selectedPainPointIds ?? this.selectedPainPointIds,
-      isNotificationEnabled:
-          isNotificationEnabled ?? this.isNotificationEnabled,
-      intervalMinutes: intervalMinutes ?? this.intervalMinutes,
-      workStartTime: workStartTime ?? this.workStartTime,
-      workEndTime: workEndTime ?? this.workEndTime,
-      workDays: workDays ?? this.workDays,
-      breakTimes: breakTimes ?? this.breakTimes,
-      isSoundEnabled: isSoundEnabled ?? this.isSoundEnabled,
-      isVibrationEnabled: isVibrationEnabled ?? this.isVibrationEnabled,
-      maxSnoozeCount: maxSnoozeCount ?? this.maxSnoozeCount,
-      snoozeIntervals: snoozeIntervals ?? this.snoozeIntervals,
-      isFirstTimeSetup: isFirstTimeSetup ?? this.isFirstTimeSetup,
-      lastNotificationTime: lastNotificationTime ?? this.lastNotificationTime,
-      nextNotificationTime: nextNotificationTime ?? this.nextNotificationTime,
+      workStartTime: const TimeOfDay(hour: 9, minute: 0),
+      workEndTime: const TimeOfDay(hour: 17, minute: 0),
+      workDays: [1, 2, 3, 4, 5], // Monday to Friday
     );
   }
 
-  bool get hasSelectedPainPoints => selectedPainPointIds.length >= 1;
-  bool get hasValidWorkTime => workStartTime.hour < workEndTime.hour;
-  bool get isSetupComplete => !isFirstTimeSetup && hasSelectedPainPoints;
+  UserSettings copyWith({
+    bool? notificationsEnabled,
+    int? notificationIntervalMinutes,
+    TimeOfDay? workStartTime,
+    TimeOfDay? workEndTime,
+    List<int>? workDays,
+    List<String>? selectedPainPoints,
+    int? treatmentsPerSession,
+    int? maxSnoozeCount,
+    List<int>? snoozeIntervals,
+    ThemeMode? themeMode,
+    String? language,
+    bool? soundEnabled,
+    bool? vibrationEnabled,
+    double? volume,
+  }) {
+    return UserSettings(
+      notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
+      notificationIntervalMinutes: notificationIntervalMinutes ?? this.notificationIntervalMinutes,
+      workStartTime: workStartTime ?? this.workStartTime,
+      workEndTime: workEndTime ?? this.workEndTime,
+      workDays: workDays ?? List.from(this.workDays),
+      selectedPainPoints: selectedPainPoints ?? List.from(this.selectedPainPoints),
+      treatmentsPerSession: treatmentsPerSession ?? this.treatmentsPerSession,
+      maxSnoozeCount: maxSnoozeCount ?? this.maxSnoozeCount,
+      snoozeIntervals: snoozeIntervals ?? List.from(this.snoozeIntervals),
+      themeMode: themeMode ?? this.themeMode,
+      language: language ?? this.language,
+      soundEnabled: soundEnabled ?? this.soundEnabled,
+      vibrationEnabled: vibrationEnabled ?? this.vibrationEnabled,
+      volume: volume ?? this.volume,
+    );
+  }
 
-  Duration get intervalDuration => Duration(minutes: intervalMinutes);
+  Map<String, dynamic> toJson() {
+    return {
+      'notificationsEnabled': notificationsEnabled,
+      'notificationIntervalMinutes': notificationIntervalMinutes,
+      'workStartTime': {
+        'hour': workStartTime.hour,
+        'minute': workStartTime.minute,
+      },
+      'workEndTime': {
+        'hour': workEndTime.hour,
+        'minute': workEndTime.minute,
+      },
+      'workDays': workDays,
+      'selectedPainPoints': selectedPainPoints,
+      'treatmentsPerSession': treatmentsPerSession,
+      'maxSnoozeCount': maxSnoozeCount,
+      'snoozeIntervals': snoozeIntervals,
+      'themeMode': themeMode.index,
+      'language': language,
+      'soundEnabled': soundEnabled,
+      'vibrationEnabled': vibrationEnabled,
+      'volume': volume,
+    };
+  }
+
+  factory UserSettings.fromJson(Map<String, dynamic> json) {
+    return UserSettings(
+      notificationsEnabled: json['notificationsEnabled'] ?? true,
+      notificationIntervalMinutes: json['notificationIntervalMinutes'] ?? 60,
+      workStartTime: TimeOfDay(
+        hour: json['workStartTime']['hour'] ?? 9,
+        minute: json['workStartTime']['minute'] ?? 0,
+      ),
+      workEndTime: TimeOfDay(
+        hour: json['workEndTime']['hour'] ?? 17,
+        minute: json['workEndTime']['minute'] ?? 0,
+      ),
+      workDays: List<int>.from(json['workDays'] ?? [1, 2, 3, 4, 5]),
+      selectedPainPoints: List<String>.from(json['selectedPainPoints'] ?? []),
+      treatmentsPerSession: json['treatmentsPerSession'] ?? 3,
+      maxSnoozeCount: json['maxSnoozeCount'] ?? 3,
+      snoozeIntervals: List<int>.from(json['snoozeIntervals'] ?? [5, 10, 15]),
+      themeMode: ThemeMode.values[json['themeMode'] ?? 0],
+      language: json['language'] ?? 'th',
+      soundEnabled: json['soundEnabled'] ?? true,
+      vibrationEnabled: json['vibrationEnabled'] ?? true,
+      volume: json['volume']?.toDouble() ?? 0.8,
+    );
+  }
+
+  bool get hasSelectedPainPoints => selectedPainPoints.isNotEmpty;
 
   bool isWorkDay(DateTime date) {
     return workDays.contains(date.weekday);
   }
 
-  bool isInWorkTime(DateTime time) {
-    final timeOfDay = TimeOfDay.fromDateTime(time);
-    return _isTimeAfterOrEqual(timeOfDay, workStartTime) &&
-        _isTimeBefore(timeOfDay, workEndTime);
-  }
-
-  bool isInBreakTime(DateTime time) {
-    final timeOfDay = TimeOfDay.fromDateTime(time);
-    return breakTimes.any((breakTime) => breakTime.contains(timeOfDay));
-  }
-
-  bool _isTimeAfterOrEqual(TimeOfDay time, TimeOfDay reference) {
-    return time.hour > reference.hour ||
-        (time.hour == reference.hour && time.minute >= reference.minute);
-  }
-
-  bool _isTimeBefore(TimeOfDay time, TimeOfDay reference) {
-    return time.hour < reference.hour ||
-        (time.hour == reference.hour && time.minute < reference.minute);
-  }
-}
-
-@HiveType(typeId: 5)
-class BreakTime extends HiveObject {
-  @HiveField(0)
-  final String name;
-
-  @HiveField(1)
-  final TimeOfDay startTime;
-
-  @HiveField(2)
-  final TimeOfDay endTime;
-
-  @HiveField(3)
-  final bool isEnabled;
-
-  BreakTime({
-    required this.name,
-    required this.startTime,
-    required this.endTime,
-    this.isEnabled = true,
-  });
-
-  BreakTime copyWith({
-    String? name,
-    TimeOfDay? startTime,
-    TimeOfDay? endTime,
-    bool? isEnabled,
-  }) {
-    return BreakTime(
-      name: name ?? this.name,
-      startTime: startTime ?? this.startTime,
-      endTime: endTime ?? this.endTime,
-      isEnabled: isEnabled ?? this.isEnabled,
-    );
-  }
-
-  bool contains(TimeOfDay time) {
-    if (!isEnabled) return false;
-
-    return _isTimeAfterOrEqual(time, startTime) && _isTimeBefore(time, endTime);
-  }
-
-  Duration get duration {
-    final start = Duration(hours: startTime.hour, minutes: startTime.minute);
-    final end = Duration(hours: endTime.hour, minutes: endTime.minute);
-    return end - start;
-  }
-
-  bool _isTimeAfterOrEqual(TimeOfDay time, TimeOfDay reference) {
-    return time.hour > reference.hour ||
-        (time.hour == reference.hour && time.minute >= reference.minute);
-  }
-
-  bool _isTimeBefore(TimeOfDay time, TimeOfDay reference) {
-    return time.hour < reference.hour ||
-        (time.hour == reference.hour && time.minute < reference.minute);
-  }
-}
-
-@HiveType(typeId: 6)
-class TimeOfDay extends HiveObject {
-  @HiveField(0)
-  final int hour;
-
-  @HiveField(1)
-  final int minute;
-
-  const TimeOfDay({required this.hour, required this.minute});
-
-  factory TimeOfDay.fromDateTime(DateTime dateTime) {
-    return TimeOfDay(hour: dateTime.hour, minute: dateTime.minute);
-  }
-
-  factory TimeOfDay.now() {
-    final now = DateTime.now();
-    return TimeOfDay(hour: now.hour, minute: now.minute);
+  bool isWorkTime(TimeOfDay time) {
+    final timeInMinutes = time.hour * 60 + time.minute;
+    final startInMinutes = workStartTime.hour * 60 + workStartTime.minute;
+    final endInMinutes = workEndTime.hour * 60 + workEndTime.minute;
+    
+    return timeInMinutes >= startInMinutes && timeInMinutes <= endInMinutes;
   }
 
   @override
   String toString() {
-    return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+    return 'UserSettings('
+        'notificationsEnabled: $notificationsEnabled, '
+        'notificationIntervalMinutes: $notificationIntervalMinutes, '
+        'workStartTime: ${workStartTime.hour}:${workStartTime.minute}, '
+        'workEndTime: ${workEndTime.hour}:${workEndTime.minute}, '
+        'workDays: $workDays, '
+        'selectedPainPoints: ${selectedPainPoints.length}, '
+        'treatmentsPerSession: $treatmentsPerSession, '
+        'maxSnoozeCount: $maxSnoozeCount, '
+        'language: $language)';
   }
+}
 
-  String get displayTime {
-    final hour12 = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
-    final period = hour < 12 ? 'AM' : 'PM';
-    return '${hour12.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} $period';
+// Custom TimeOfDay Adapter for Hive
+class TimeOfDayAdapter extends TypeAdapter<TimeOfDay> {
+  @override
+  final int typeId = 6;
+
+  @override
+  TimeOfDay read(BinaryReader reader) {
+    final hour = reader.readInt();
+    final minute = reader.readInt();
+    return TimeOfDay(hour: hour, minute: minute);
   }
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is TimeOfDay &&
-          runtimeType == other.runtimeType &&
-          hour == other.hour &&
-          minute == other.minute;
-
-  @override
-  int get hashCode => hour.hashCode ^ minute.hashCode;
+  void write(BinaryWriter writer, TimeOfDay obj) {
+    writer.writeInt(obj.hour);
+    writer.writeInt(obj.minute);
+  }
 }
