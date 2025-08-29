@@ -1,7 +1,5 @@
 import 'package:hive/hive.dart';
 
-part 'pain_point.g.dart';
-
 @HiveType(typeId: 0)
 class PainPoint extends HiveObject {
   @HiveField(0)

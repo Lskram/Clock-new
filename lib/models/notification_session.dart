@@ -1,7 +1,5 @@
 import 'package:hive/hive.dart';
 
-part 'notification_session.g.dart';
-
 @HiveType(typeId: 2)
 class NotificationSession extends HiveObject {
   @HiveField(0)

@@ -1,15 +1,13 @@
 import 'package:get/get.dart';
+import 'package:office_syndrome_helper/controllers/settings_page.dart';
 
 import 'app_routes.dart';
 import '../pages/splash_page.dart';
 import '../pages/questionnaire_page.dart';
 import '../pages/home_page.dart';
 import '../pages/todo_page.dart';
-import '../pages/settings_page.dart';
-import '../pages/statistics_page.dart';
 import '../controllers/app_controller.dart';
 import '../controllers/notification_controller.dart';
-import '../controllers/settings_controller.dart';
 import '../controllers/statistics_controller.dart';
 
 class AppPages {
