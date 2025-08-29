@@ -1,4 +1,4 @@
-import 'dart:math';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../models/treatment.dart';
@@ -6,9 +6,9 @@ import '../models/pain_point.dart';
 import '../models/user_settings.dart';
 import '../services/database_service.dart';
 
-class RandomService {
+class RandomService extends GetxService {
   final DatabaseService _databaseService = Get.find<DatabaseService>();
-  final Random _random = Random();
+  final math.Random _random = math.Random();
 
   // Generate random treatments based on user's selected pain points
   Future<List<Treatment>> generateRandomTreatments({
@@ -53,7 +53,7 @@ class RandomService {
     }
   }
 
-  // Select random treatments from a list (แก้ไข return type)
+  // Select random treatments from a list - แก้ไข return type
   List<Treatment> _selectRandomTreatmentsFromList(
       List<Treatment> treatments, int count) {
     if (treatments.isEmpty) return <Treatment>[];
@@ -78,55 +78,46 @@ class RandomService {
       if (selectedPainPoints.isEmpty) return [];
 
       final allTreatments = await _databaseService.getAllTreatments();
+      if (allTreatments.isEmpty) return [];
 
-      // Group treatments by category
-      final treatmentsByCategory = <String, List<Treatment>>{};
-      for (final treatment in allTreatments) {
-        if (treatment.targetPainPoints.any(
-          (painPointId) => selectedPainPoints.contains(painPointId),
-        )) {
-          treatmentsByCategory.putIfAbsent(treatment.category, () => []);
-          treatmentsByCategory[treatment.category]!.add(treatment);
+      // Group treatments by pain points
+      final treatmentsByPainPoint = <String, List<Treatment>>{};
+
+      for (final painPointId in selectedPainPoints) {
+        treatmentsByPainPoint[painPointId] = allTreatments
+            .where(
+                (treatment) => treatment.targetPainPoints.contains(painPointId))
+            .toList();
+      }
+
+      // Select treatments ensuring balance across pain points
+      final selectedTreatments = <Treatment>[];
+      final painPointQueue = List<String>.from(selectedPainPoints);
+
+      while (selectedTreatments.length < treatmentCount &&
+          painPointQueue.isNotEmpty) {
+        // Shuffle to ensure randomness
+        painPointQueue.shuffle(_random);
+
+        for (final painPointId in List<String>.from(painPointQueue)) {
+          if (selectedTreatments.length >= treatmentCount) break;
+
+          final availableTreatments = treatmentsByPainPoint[painPointId] ?? [];
+          final unselectedTreatments = availableTreatments
+              .where((t) => !selectedTreatments.contains(t))
+              .toList();
+
+          if (unselectedTreatments.isNotEmpty) {
+            final randomTreatment = unselectedTreatments[
+                _random.nextInt(unselectedTreatments.length)];
+            selectedTreatments.add(randomTreatment);
+          } else {
+            // No more treatments for this pain point, remove it from queue
+            painPointQueue.remove(painPointId);
+          }
         }
       }
 
-      final selectedTreatments = <Treatment>[];
-      final categories = treatmentsByCategory.keys.toList();
-      categories.shuffle(_random);
-
-      // Try to get at least one treatment from each category
-      int treatmentsPerCategory = treatmentCount ~/ categories.length;
-      int remainingTreatments = treatmentCount % categories.length;
-
-      for (final category in categories) {
-        final categoryTreatments = treatmentsByCategory[category]!;
-        categoryTreatments.shuffle(_random);
-
-        final countForCategory =
-            treatmentsPerCategory + (remainingTreatments > 0 ? 1 : 0);
-
-        if (remainingTreatments > 0) remainingTreatments--;
-
-        final actualCount =
-            math.min(countForCategory, categoryTreatments.length);
-        selectedTreatments.addAll(categoryTreatments.take(actualCount));
-      }
-
-      // If we still need more treatments, add randomly from remaining
-      if (selectedTreatments.length < treatmentCount) {
-        final remaining = allTreatments
-            .where((t) => !selectedTreatments.contains(t))
-            .where((t) => t.targetPainPoints.any(
-                  (painPointId) => selectedPainPoints.contains(painPointId),
-                ))
-            .toList();
-
-        remaining.shuffle(_random);
-        final needed = treatmentCount - selectedTreatments.length;
-        selectedTreatments.addAll(remaining.take(needed));
-      }
-
-      selectedTreatments.shuffle(_random);
       return selectedTreatments;
     } catch (e) {
       debugPrint('Error generating balanced treatments: $e');
@@ -134,9 +125,10 @@ class RandomService {
     }
   }
 
-  // Generate treatments with difficulty progression
-  Future<List<Treatment>> generateProgressiveTreatments({
+  // Generate treatments by difficulty level
+  Future<List<Treatment>> generateTreatmentsByDifficulty({
     required UserSettings settings,
+    required int difficulty,
     int? count,
   }) async {
     try {
@@ -146,183 +138,27 @@ class RandomService {
       if (selectedPainPoints.isEmpty) return [];
 
       final allTreatments = await _databaseService.getAllTreatments();
-      final relevantTreatments = allTreatments.where((treatment) {
-        return treatment.targetPainPoints.any(
-          (painPointId) => selectedPainPoints.contains(painPointId),
-        );
+
+      final filteredTreatments = allTreatments.where((treatment) {
+        return treatment.difficulty == difficulty &&
+            treatment.targetPainPoints.any(
+              (painPointId) => selectedPainPoints.contains(painPointId),
+            );
       }).toList();
 
-      if (relevantTreatments.isEmpty) return [];
-
-      // Group by difficulty
-      final treatmentsByDifficulty = <int, List<Treatment>>{};
-      for (final treatment in relevantTreatments) {
-        treatmentsByDifficulty.putIfAbsent(treatment.difficulty, () => []);
-        treatmentsByDifficulty[treatment.difficulty]!.add(treatment);
-      }
-
-      final selectedTreatments = <Treatment>[];
-      final difficulties = treatmentsByDifficulty.keys.toList()..sort();
-
-      // Distribute treatments across difficulties
-      int treatmentsPerDifficulty = treatmentCount ~/ difficulties.length;
-      int remainingTreatments = treatmentCount % difficulties.length;
-
-      for (final difficulty in difficulties) {
-        final difficultyTreatments = treatmentsByDifficulty[difficulty]!;
-        difficultyTreatments.shuffle(_random);
-
-        final countForDifficulty =
-            treatmentsPerDifficulty + (remainingTreatments > 0 ? 1 : 0);
-
-        if (remainingTreatments > 0) remainingTreatments--;
-
-        final actualCount =
-            math.min(countForDifficulty, difficultyTreatments.length);
-        selectedTreatments.addAll(difficultyTreatments.take(actualCount));
-      }
-
-      return selectedTreatments;
+      return _selectRandomTreatmentsFromList(
+          filteredTreatments, treatmentCount);
     } catch (e) {
-      debugPrint('Error generating progressive treatments: $e');
+      debugPrint('Error generating treatments by difficulty: $e');
       return [];
     }
   }
 
-  // Generate next notification time within work hours
-  DateTime generateNextNotificationTime(UserSettings settings) {
-    final now = DateTime.now();
-    final intervalMinutes = settings.notificationIntervalMinutes;
-
-    // Start from next interval
-    final nextTime = now.add(Duration(minutes: intervalMinutes));
-
-    return _adjustToWorkHours(nextTime, settings);
-  }
-
-  // Generate multiple future notification times
-  List<DateTime> generateNotificationSchedule({
+  // Generate treatments by duration range
+  Future<List<Treatment>> generateTreatmentsByDuration({
     required UserSettings settings,
-    required int days,
-  }) {
-    final schedule = <DateTime>[];
-    final now = DateTime.now();
-
-    for (int day = 0; day < days; day++) {
-      final targetDate = now.add(Duration(days: day));
-
-      // Skip if not a work day
-      if (!settings.isWorkDay(targetDate)) continue;
-
-      final daySchedule = _generateDaySchedule(targetDate, settings);
-      schedule.addAll(daySchedule);
-    }
-
-    return schedule;
-  }
-
-  // Generate schedule for a single day
-  List<DateTime> _generateDaySchedule(DateTime date, UserSettings settings) {
-    final schedule = <DateTime>[];
-    final workStart = DateTime(
-      date.year,
-      date.month,
-      date.day,
-      settings.workStartTime.hour,
-      settings.workStartTime.minute,
-    );
-
-    final workEnd = DateTime(
-      date.year,
-      date.month,
-      date.day,
-      settings.workEndTime.hour,
-      settings.workEndTime.minute,
-    );
-
-    final intervalMinutes = settings.notificationIntervalMinutes;
-    DateTime currentTime = workStart;
-
-    while (currentTime.isBefore(workEnd)) {
-      schedule.add(currentTime);
-      currentTime = currentTime.add(Duration(minutes: intervalMinutes));
-    }
-
-    return schedule;
-  }
-
-  // Adjust time to fall within work hours
-  DateTime _adjustToWorkHours(DateTime time, UserSettings settings) {
-    final date = time;
-    final workStart = DateTime(
-      date.year,
-      date.month,
-      date.day,
-      settings.workStartTime.hour,
-      settings.workStartTime.minute,
-    );
-
-    final workEnd = DateTime(
-      date.year,
-      date.month,
-      date.day,
-      settings.workEndTime.hour,
-      settings.workEndTime.minute,
-    );
-
-    // If before work hours, set to work start
-    if (time.isBefore(workStart)) {
-      return workStart;
-    }
-
-    // If after work hours, move to next work day
-    if (time.isAfter(workEnd)) {
-      return _findNextWorkDay(time, settings);
-    }
-
-    return time;
-  }
-
-  // Find next work day start time
-  DateTime _findNextWorkDay(DateTime fromTime, UserSettings settings) {
-    DateTime nextDay = DateTime(
-      fromTime.year,
-      fromTime.month,
-      fromTime.day + 1,
-      settings.workStartTime.hour,
-      settings.workStartTime.minute,
-    );
-
-    // Keep looking for next work day
-    while (!settings.isWorkDay(nextDay)) {
-      nextDay = nextDay.add(const Duration(days: 1));
-    }
-
-    return nextDay;
-  }
-
-  // Generate random delay (for more natural notifications)
-  Duration generateRandomDelay({int maxMinutes = 5}) {
-    final randomMinutes = _random.nextInt(maxMinutes + 1);
-    return Duration(minutes: randomMinutes);
-  }
-
-  // Check if current time is suitable for notifications
-  bool isGoodTimeForNotification(UserSettings settings) {
-    final now = DateTime.now();
-
-    // Check if it's a work day
-    if (!settings.isWorkDay(now)) return false;
-
-    // Check if it's within work hours
-    if (!settings.isWorkTime(TimeOfDay.fromDateTime(now))) return false;
-
-    return true;
-  }
-
-  // Generate weighted random selection (favor less-used treatments)
-  Future<List<Treatment>> generateWeightedTreatments({
-    required UserSettings settings,
+    required int minDuration,
+    required int maxDuration,
     int? count,
   }) async {
     try {
@@ -332,44 +168,169 @@ class RandomService {
       if (selectedPainPoints.isEmpty) return [];
 
       final allTreatments = await _databaseService.getAllTreatments();
-      final relevantTreatments = allTreatments.where((treatment) {
-        return treatment.targetPainPoints.any(
-          (painPointId) => selectedPainPoints.contains(painPointId),
-        );
+
+      final filteredTreatments = allTreatments.where((treatment) {
+        return treatment.duration >= minDuration &&
+            treatment.duration <= maxDuration &&
+            treatment.targetPainPoints.any(
+              (painPointId) => selectedPainPoints.contains(painPointId),
+            );
       }).toList();
 
-      if (relevantTreatments.isEmpty) return [];
+      return _selectRandomTreatmentsFromList(
+          filteredTreatments, treatmentCount);
+    } catch (e) {
+      debugPrint('Error generating treatments by duration: $e');
+      return [];
+    }
+  }
 
-      // Calculate weights (inverse of completion count)
-      final maxCompletions = relevantTreatments
-          .map((t) => t.completedCount)
-          .fold<int>(0, math.max);
+  // Generate smart session (considers time of day, break times, etc.)
+  Future<List<Treatment>> generateSmartSession({
+    required UserSettings settings,
+    int? count,
+  }) async {
+    try {
+      final now = DateTime.now();
+      final currentTime = TimeOfDay.now();
+      final treatmentCount = count ?? settings.treatmentsPerSession;
 
-      final weightedTreatments = <Treatment>[];
-      for (final treatment in relevantTreatments) {
-        // Higher weight for less-used treatments
-        final weight = maxCompletions - treatment.completedCount + 1;
-        for (int i = 0; i < weight; i++) {
-          weightedTreatments.add(treatment);
+      // Check if it's during break time
+      final isBreakTime = settings.breakTimes.any((breakTime) {
+        return breakTime.isEnabled && breakTime.isTimeInRange(currentTime);
+      });
+
+      // Adjust difficulty and duration based on time and context
+      int targetDifficulty;
+      int maxDuration;
+
+      if (isBreakTime) {
+        // During break time, prefer easier and shorter exercises
+        targetDifficulty = 1;
+        maxDuration = 60; // 1 minute max
+      } else if (_isEarlyMorning(currentTime)) {
+        // Early morning - gentle warm-up exercises
+        targetDifficulty = 1;
+        maxDuration = 90;
+      } else if (_isAfternoon(currentTime)) {
+        // Afternoon - more energetic exercises
+        targetDifficulty = 2;
+        maxDuration = 120;
+      } else {
+        // Regular time - balanced selection
+        targetDifficulty = 0; // Any difficulty
+        maxDuration = 180;
+      }
+
+      List<Treatment> treatments;
+
+      if (targetDifficulty > 0) {
+        treatments = await generateTreatmentsByDifficulty(
+          settings: settings,
+          difficulty: targetDifficulty,
+          count: treatmentCount,
+        );
+
+        // If not enough treatments found, fallback to general selection
+        if (treatments.length < treatmentCount) {
+          final additionalTreatments = await generateRandomTreatments(
+            settings: settings,
+            count: treatmentCount - treatments.length,
+          );
+          treatments.addAll(additionalTreatments);
+        }
+      } else {
+        treatments = await generateRandomTreatments(
+          settings: settings,
+          count: treatmentCount,
+        );
+      }
+
+      // Filter by duration if needed
+      if (maxDuration < 180) {
+        treatments =
+            treatments.where((t) => t.duration <= maxDuration).toList();
+      }
+
+      return treatments.take(treatmentCount).toList();
+    } catch (e) {
+      debugPrint('Error generating smart session: $e');
+      return await generateRandomTreatments(settings: settings, count: count);
+    }
+  }
+
+  // Helper methods for time-based logic
+  bool _isEarlyMorning(TimeOfDay time) {
+    return time.hour >= 6 && time.hour < 10;
+  }
+
+  bool _isAfternoon(TimeOfDay time) {
+    return time.hour >= 14 && time.hour < 18;
+  }
+
+  // Get treatment statistics for debugging
+  Future<Map<String, dynamic>> getTreatmentStats() async {
+    try {
+      final allTreatments = await _databaseService.getAllTreatments();
+
+      final stats = {
+        'total': allTreatments.length,
+        'byDifficulty': <int, int>{},
+        'byPainPoint': <String, int>{},
+        'avgDuration': 0.0,
+      };
+
+      // Count by difficulty
+      for (final treatment in allTreatments) {
+        stats['byDifficulty'][treatment.difficulty] =
+            (stats['byDifficulty'][treatment.difficulty] ?? 0) + 1;
+
+        // Count by pain points
+        for (final painPointId in treatment.targetPainPoints) {
+          stats['byPainPoint'][painPointId] =
+              (stats['byPainPoint'][painPointId] ?? 0) + 1;
         }
       }
 
-      weightedTreatments.shuffle(_random);
-      final selectedTreatments = <Treatment>[];
-      final usedTreatments = <String>{};
-
-      for (final treatment in weightedTreatments) {
-        if (usedTreatments.contains(treatment.id)) continue;
-        selectedTreatments.add(treatment);
-        usedTreatments.add(treatment.id);
-
-        if (selectedTreatments.length >= treatmentCount) break;
+      // Calculate average duration
+      if (allTreatments.isNotEmpty) {
+        final totalDuration =
+            allTreatments.map((t) => t.duration).reduce((a, b) => a + b);
+        stats['avgDuration'] = totalDuration / allTreatments.length;
       }
 
-      return selectedTreatments;
+      debugPrint('Treatment stats: $stats');
+      return stats;
     } catch (e) {
-      debugPrint('Error generating weighted treatments: $e');
-      return [];
+      debugPrint('Error getting treatment stats: $e');
+      return {};
+    }
+  }
+
+  // Utility method for testing randomness
+  Future<void> testRandomDistribution({
+    required UserSettings settings,
+    int iterations = 100,
+  }) async {
+    try {
+      final distributionCount = <String, int>{};
+
+      for (int i = 0; i < iterations; i++) {
+        final treatments = await generateRandomTreatments(settings: settings);
+
+        for (final treatment in treatments) {
+          distributionCount[treatment.id] =
+              (distributionCount[treatment.id] ?? 0) + 1;
+        }
+      }
+
+      debugPrint('Random distribution test ($iterations iterations):');
+      distributionCount.forEach((treatmentId, count) {
+        final percentage = (count / iterations * 100).toStringAsFixed(1);
+        debugPrint('$treatmentId: $count times ($percentage%)');
+      });
+    } catch (e) {
+      debugPrint('Error in random distribution test: $e');
     }
   }
 }

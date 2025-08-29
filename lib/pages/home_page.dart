@@ -1,611 +1,614 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:percent_indicator/percent_indicator.dart';
+import 'package:intl/intl.dart';
 import '../controllers/app_controller.dart';
 import '../controllers/notification_controller.dart';
-import '../controllers/settings_controller.dart';
+import '../controllers/statistics_controller.dart';
 import '../models/notification_session.dart';
-import '../models/treatment.dart';
 import '../utils/constants.dart';
 import '../routes/app_routes.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final appController = Get.find<AppController>();
-    final notificationController = Get.find<NotificationController>();
-    final settingsController = Get.find<SettingsController>();
+  State<HomePage> createState() => _HomePageState();
+}
 
+class _HomePageState extends State<HomePage> {
+  final AppController appController = Get.find<AppController>();
+  final NotificationController notificationController =
+      Get.find<NotificationController>();
+  final StatisticsController statisticsController =
+      Get.find<StatisticsController>();
+
+  @override
+  void initState() {
+    super.initState();
+    _initializePage();
+  }
+
+  Future<void> _initializePage() async {
+    // แก้ไข use_of_void_result และ await_only_futures
+    notificationController.checkPendingNotifications(); // ลบ await
+    statisticsController.loadTodayStatistics();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      body: CustomScrollView(
-        slivers: [
-          _buildSliverAppBar(context),
-          SliverPadding(
-            padding: const EdgeInsets.all(16),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                _buildWelcomeCard(context, settingsController),
-                const SizedBox(height: 16),
-                _buildQuickStatsCard(context, notificationController),
-                const SizedBox(height: 16),
-                _buildActiveSessionCard(context, notificationController),
-                const SizedBox(height: 16),
-                _buildQuickActionsCard(context),
-                const SizedBox(height: 16),
-                _buildRecentSessionsCard(context, notificationController),
-                const SizedBox(height: 100), // Bottom padding for FAB
-              ]),
+      backgroundColor: Colors.grey[50],
+      body: RefreshIndicator(
+        onRefresh: _refreshData,
+        child: CustomScrollView(
+          slivers: [
+            _buildAppBar(),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildWelcomeCard(),
+                    const SizedBox(height: 20),
+                    _buildQuickActions(),
+                    const SizedBox(height: 20),
+                    _buildTodayProgress(),
+                    const SizedBox(height: 20),
+                    _buildUpcomingSession(),
+                    const SizedBox(height: 20),
+                    _buildRecentActivity(),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-      floatingActionButton: _buildFloatingActionButton(context),
+      floatingActionButton: _buildFloatingActionButton(),
     );
   }
 
-  Widget _buildSliverAppBar(BuildContext context) {
+  Widget _buildAppBar() {
     return SliverAppBar(
-      expandedHeight: 120,
-      floating: true,
+      expandedHeight: 160.0,
+      floating: false,
       pinned: true,
-      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+      backgroundColor: AppColors.primary,
       flexibleSpace: FlexibleSpaceBar(
-        title: Text(
+        title: const Text(
           'Office Syndrome Helper',
           style: TextStyle(
-            color: Theme.of(context).colorScheme.onPrimaryContainer,
-            fontWeight: FontWeight.w600,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
           ),
         ),
         background: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
               colors: [
-                Theme.of(context).colorScheme.primary,
-                Theme.of(context).colorScheme.primaryContainer,
+                AppColors.primaryLight,
+                AppColors.primary,
               ],
             ),
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                right: -20,
+                top: -20,
+                child: Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                ),
+              ),
+              const Positioned(
+                right: 20,
+                top: 60,
+                child: Icon(
+                  Icons.health_and_safety_outlined,
+                  size: 48,
+                  color: Colors.white30,
+                ),
+              ),
+            ],
           ),
         ),
       ),
       actions: [
         IconButton(
-          onPressed: () => Get.toNamed(AppRoutes.settings),
-          icon: const Icon(Icons.settings),
-          tooltip: 'การตั้งค่า',
+          icon: const Icon(Icons.settings_outlined, color: Colors.white),
+          onPressed: () => Get.toNamed(AppRoutes.SETTINGS),
         ),
       ],
     );
   }
 
-  Widget _buildWelcomeCard(
-      BuildContext context, SettingsController settingsController) {
-    final now = DateTime.now();
-    final greeting = _getGreeting(now.hour);
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
+  Widget _buildWelcomeCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
                   Icons.waving_hand,
-                  color: Colors.orange.withValues(alpha: 0.8),
-                  size: 28,
+                  color: AppColors.primary,
+                  size: 24,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        greeting,
-                        style:
-                            Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'พร้อมดูแลสุขภาพกันแล้วหรือยัง?',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey.withValues(alpha: 0.8),
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Obx(() {
-              final selectedPainPoints =
-                  settingsController.settings.selectedPainPoints;
-              if (selectedPainPoints.isEmpty) {
-                return _buildSetupPrompt(context);
-              }
-              return _buildPainPointsSummary(context, selectedPainPoints);
-            }),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSetupPrompt(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context)
-            .colorScheme
-            .secondaryContainer
-            .withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'เริ่มต้นใช้งาน',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSecondaryContainer,
-                ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'กรุณาตั้งค่าจุดปวดเมื่อยที่คุณต้องการดูแลเพื่อเริ่มรับการแจ้งเตือน',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => Get.toNamed(AppRoutes.questionnaire),
-              icon: const Icon(Icons.play_arrow),
-              label: const Text('เริ่มตั้งค่า'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPainPointsSummary(
-      BuildContext context, List<String> selectedPainPoints) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Theme.of(context)
-                .colorScheme
-                .primaryContainer
-                .withValues(alpha: 0.3),
-            Theme.of(context)
-                .colorScheme
-                .secondaryContainer
-                .withValues(alpha: 0.3),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'จุดที่กำลังดูแล',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: selectedPainPoints.map((pointId) {
-              return Chip(
-                label: Text(
-                  _getPainPointName(pointId),
-                  style: const TextStyle(fontSize: 12),
-                ),
-                backgroundColor: Theme.of(context).colorScheme.surface,
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickStatsCard(
-      BuildContext context, NotificationController controller) {
-    return Obx(() {
-      final sessions = controller.recentSessions;
-      final todayCompleted = sessions.where((session) {
-        return session.isCompleted &&
-            _isSameDay(
-                session.completedTime ?? session.scheduledTime, DateTime.now());
-      }).length;
-
-      final weekCompleted = sessions.where((session) {
-        return session.isCompleted &&
-            _isThisWeek(session.completedTime ?? session.scheduledTime);
-      }).length;
-
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'สถิติการออกกำลัง',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
               ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildStatItem(
-                      context,
-                      icon: Icons.today,
-                      label: 'วันนี้',
-                      value: todayCompleted.toString(),
-                      color: Colors.blue,
-                    ),
-                  ),
-                  Container(
-                    width: 1,
-                    height: 40,
-                    color: Colors.grey.withValues(alpha: 0.3),
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                  ),
-                  Expanded(
-                    child: _buildStatItem(
-                      context,
-                      icon: Icons.date_range,
-                      label: 'สัปดาห์นี้',
-                      value: weekCompleted.toString(),
-                      color: Colors.green,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      );
-    });
-  }
-
-  Widget _buildStatItem(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-  }) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: color, size: 24),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-        ),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActiveSessionCard(
-      BuildContext context, NotificationController controller) {
-    return Obx(() {
-      final activeSession = controller.currentSession.value;
-
-      if (activeSession == null) {
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                Icon(
-                  Icons.self_improvement,
-                  size: 48,
-                  color: Colors.grey.withValues(alpha: 0.5),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'ไม่มีเซสชันที่ใช้งานอยู่',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'รอการแจ้งเตือนครั้งต่อไป',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.grey.withValues(alpha: 0.7),
-                      ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _startImmediateSession(context),
-                    icon: const Icon(Icons.play_arrow),
-                    label: const Text('เริ่มเซสชันทันที'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }
-
-      return _buildActiveSessionDetails(context, activeSession, controller);
-    });
-  }
-
-  Widget _buildActiveSessionDetails(
-    BuildContext context,
-    NotificationSession session,
-    NotificationController controller,
-  ) {
-    final progress = session.completionProgress;
-
-    return Card(
-      color:
-          Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.fitness_center,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'เซสชันที่กำลังดำเนินการ',
-                        style:
-                            Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                      ),
-                      Text(
-                        '${session.completedTreatmentIds.length}/${session.treatmentIds.length} รายการเสร็จสิ้น',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            LinearPercentIndicator(
-              percent: progress,
-              backgroundColor: Colors.grey.withValues(alpha: 0.3),
-              progressColor: Theme.of(context).colorScheme.primary,
-              lineHeight: 8,
-              barRadius: const Radius.circular(4),
-              animation: true,
-              animationDuration: 500,
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => controller.pauseSession(),
-                    icon: const Icon(Icons.pause),
-                    label: const Text('หยุดชั่วคราว'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => Get.toNamed(AppRoutes.todo),
-                    icon: const Icon(Icons.play_arrow),
-                    label: const Text('ดำเนินการต่อ'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickActionsCard(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'เมนูด่วน',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 16),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              childAspectRatio: 1.2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              children: [
-                _buildActionButton(
-                  context,
-                  icon: Icons.list_alt,
-                  label: 'รายการท่า',
-                  onTap: () => Get.toNamed(AppRoutes.settingsTreatments),
-                ),
-                _buildActionButton(
-                  context,
-                  icon: Icons.bar_chart,
-                  label: 'สถิติ',
-                  onTap: () => Get.toNamed(AppRoutes.statistics),
-                ),
-                _buildActionButton(
-                  context,
-                  icon: Icons.healing,
-                  label: 'จุดปวดเมื่อย',
-                  onTap: () => Get.toNamed(AppRoutes.settingsPainPoints),
-                ),
-                _buildActionButton(
-                  context,
-                  icon: Icons.notifications,
-                  label: 'การแจ้งเตือน',
-                  onTap: () => Get.toNamed(AppRoutes.settingsNotification),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButton(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 32,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w500,
-                    ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRecentSessionsCard(
-      BuildContext context, NotificationController controller) {
-    return Obx(() {
-      final recentSessions = controller.recentSessions.take(5).toList();
-
-      if (recentSessions.isEmpty) {
-        return const SizedBox.shrink();
-      }
-
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'เซสชันล่าสุด',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                    'สวัสดี!',
+                    style: AppTextStyles.heading2,
                   ),
-                  const Spacer(),
-                  TextButton(
-                    onPressed: () => Get.toNamed(AppRoutes.statistics),
-                    child: const Text('ดูทั้งหมด'),
+                  Text(
+                    'พร้อมดูแลสุขภาพกันหรือยัง?',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              ...recentSessions
-                  .map((session) => _buildSessionTile(context, session)),
             ],
           ),
-        ),
-      );
-    });
+          const SizedBox(height: 16),
+          Obx(() {
+            final todaySession =
+                statisticsController.todayCompletedSessions.value;
+            return Text(
+              'วันนี้คุณออกกำลังกายแล้ว $todaySession ครั้ง',
+              style: AppTextStyles.bodyLarge.copyWith(
+                color: AppColors.success,
+                fontWeight: FontWeight.w500,
+              ),
+            );
+          }),
+        ],
+      ),
+    );
   }
 
-  Widget _buildSessionTile(BuildContext context, NotificationSession session) {
-    final statusColor = _getSessionStatusColor(session.status);
-    final statusIcon = _getSessionStatusIcon(session.status);
-    final displayTime = session.completedTime ?? session.scheduledTime;
+  Widget _buildQuickActions() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'เมนูหลัก',
+          style: AppTextStyles.heading3,
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionCard(
+                'เริ่มออกกำลัง',
+                'ออกกำลังกายทันที',
+                Icons.play_circle_fill,
+                AppColors.success,
+                () => _startImmediateSession(),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildActionCard(
+                'สถิติ',
+                'ดูความก้าวหน้า',
+                Icons.analytics_outlined,
+                AppColors.info,
+                () => Get.toNamed(AppRoutes.STATISTICS),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionCard(
+                'การตั้งค่า',
+                'ปรับแต่งแอป',
+                Icons.tune,
+                AppColors.warning,
+                () => Get.toNamed(AppRoutes.SETTINGS),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildActionCard(
+                'ท่าออกกำลัง',
+                'ดูท่าทั้งหมด',
+                Icons.accessibility_new,
+                AppColors.accent,
+                () => Get.toNamed(AppRoutes.SETTINGS_TREATMENTS),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionCard(
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: color.withValues(alpha: 0.2),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withValues(alpha: 0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                icon,
+                color: color,
+                size: 20,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: AppTextStyles.bodyMedium.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: AppTextStyles.bodySmall,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTodayProgress() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.trending_up,
+                color: AppColors.success,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'ความก้าวหน้าวันนี้',
+                style: AppTextStyles.heading3,
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Obx(() {
+            // แก้ไข null safety issue
+            final completed = statisticsController.todayCompletedSessions.value;
+            final estimated = statisticsController.estimatedSessionsToday.value;
+            final progress = estimated > 0 ? completed / estimated : 0.0;
+
+            return Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'เซสชันที่เสร็จสิ้น',
+                      style: AppTextStyles.bodyMedium,
+                    ),
+                    Text(
+                      '$completed / $estimated',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.success,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                LinearProgressIndicator(
+                  value: progress.clamp(0.0, 1.0), // แก้ไข argument type issue
+                  backgroundColor: Colors.grey[200],
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    progress >= 1.0 ? AppColors.success : AppColors.primary,
+                  ),
+                ),
+              ],
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUpcomingSession() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.schedule,
+                color: AppColors.primary,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'เซสชันถัดไป',
+                style: AppTextStyles.heading3,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Obx(() {
+            final upcomingSession =
+                notificationController.upcomingSession.value;
+
+            if (upcomingSession == null) {
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.check_circle_outline,
+                      color: AppColors.success,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'ไม่มีเซสชันที่กำลังจะมาถึง',
+                      style: AppTextStyles.bodyMedium,
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            final timeFormat = DateFormat('HH:mm', 'th');
+            return Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.2),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.notifications_active,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'เวลา ${timeFormat.format(upcomingSession.scheduledAt)}',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          '${upcomingSession.treatments.length} ท่าออกกำลัง',
+                          style: AppTextStyles.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      // TODO: Start immediate session
+                      _startSessionFromNotification(upcomingSession);
+                    },
+                    child: const Text('เริ่มเลย'),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentActivity() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.history,
+                    color: AppColors.textSecondary,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'กิจกรรมล่าสุด',
+                    style: AppTextStyles.heading3,
+                  ),
+                ],
+              ),
+              TextButton(
+                onPressed: () => Get.toNamed(AppRoutes.STATISTICS),
+                child: const Text('ดูทั้งหมด'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Obx(() {
+            final recentSessions = statisticsController.recentSessions;
+
+            if (recentSessions.isEmpty) {
+              return Container(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.inbox_outlined,
+                      size: 32,
+                      color: Colors.grey[400],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'ยังไม่มีกิจกรรม',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: recentSessions.length > 3 ? 3 : recentSessions.length,
+              separatorBuilder: (context, index) => const Divider(),
+              itemBuilder: (context, index) {
+                final session = recentSessions[index];
+                return _buildActivityItem(session);
+              },
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivityItem(NotificationSession session) {
+    final timeFormat = DateFormat('HH:mm', 'th');
+    final dateFormat = DateFormat('dd MMM', 'th');
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
+              color: _getStatusColor(session.status).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(statusIcon, color: statusColor, size: 16),
+            child: Icon(
+              _getStatusIcon(session.status),
+              color: _getStatusColor(session.status),
+              size: 16,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -613,32 +616,29 @@ class HomePage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${session.treatmentIds.length} ท่าการออกกำลัง',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
+                  _getStatusText(session.status),
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 Text(
-                  _formatDateTime(displayTime),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.grey.withValues(alpha: 0.7),
-                      ),
+                  '${dateFormat.format(session.scheduledAt)} • ${timeFormat.format(session.scheduledAt)}',
+                  style: AppTextStyles.bodySmall,
                 ),
               ],
             ),
           ),
-          if (session.isCompleted)
+          if (session.treatments.isNotEmpty)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.green.withValues(alpha: 0.1),
+                color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Text(
-                'เสร็จสิ้น',
-                style: TextStyle(
-                  color: Colors.green,
-                  fontSize: 12,
+              child: Text(
+                '${session.treatments.length} ท่า',
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.primary,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -648,89 +648,69 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildFloatingActionButton(BuildContext context) {
+  Widget _buildFloatingActionButton() {
     return FloatingActionButton.extended(
-      onPressed: () => _startImmediateSession(context),
-      icon: const Icon(Icons.play_arrow),
-      label: const Text('เริ่มออกกำลัง'),
-      tooltip: 'เริ่มเซสชันออกกำลังทันที',
+      onPressed: _startImmediateSession,
+      backgroundColor: AppColors.success,
+      icon: const Icon(Icons.play_arrow, color: Colors.white),
+      label: const Text(
+        'เริ่มออกกำลัง',
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+      ),
     );
   }
 
-  // Helper Methods
-  String _getGreeting(int hour) {
-    if (hour < 12) return 'สวัสดีตอนเช้า';
-    if (hour < 17) return 'สวัสดีตอนบ่าย';
-    return 'สวัสดีตอนเย็น';
-  }
-
-  String _getPainPointName(String pointId) {
-    // This should be replaced with actual data lookup
-    final painPointNames = {
-      'neck_pain': 'ปวดคอ',
-      'shoulder_pain': 'ปวดไหล่',
-      'back_pain': 'ปวดหลัง',
-      'eye_strain': 'ปวดตา',
-      'wrist_pain': 'ปวดข้อมือ',
-    };
-    return painPointNames[pointId] ?? pointId;
-  }
-
-  bool _isSameDay(DateTime date1, DateTime date2) {
-    return date1.year == date2.year &&
-        date1.month == date2.month &&
-        date1.day == date2.day;
-  }
-
-  bool _isThisWeek(DateTime date) {
-    final now = DateTime.now();
-    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-    final endOfWeek = startOfWeek.add(const Duration(days: 6));
-
-    return date.isAfter(startOfWeek.subtract(const Duration(days: 1))) &&
-        date.isBefore(endOfWeek.add(const Duration(days: 1)));
-  }
-
-  Color _getSessionStatusColor(NotificationStatus status) {
+  // Helper methods
+  Color _getStatusColor(NotificationStatus status) {
     switch (status) {
       case NotificationStatus.completed:
-        return Colors.green;
+        return AppColors.success;
       case NotificationStatus.snoozed:
-        return Colors.orange;
-      case NotificationStatus.skipped:
-        return Colors.grey;
+        return AppColors.warning;
       case NotificationStatus.dismissed:
-        return Colors.red;
-      default:
-        return Colors.blue;
+        return AppColors.error;
+      case NotificationStatus.scheduled:
+        return AppColors.info;
     }
   }
 
-  IconData _getSessionStatusIcon(NotificationStatus status) {
+  IconData _getStatusIcon(NotificationStatus status) {
     switch (status) {
       case NotificationStatus.completed:
         return Icons.check_circle;
       case NotificationStatus.snoozed:
         return Icons.snooze;
-      case NotificationStatus.skipped:
-        return Icons.skip_next;
       case NotificationStatus.dismissed:
-        return Icons.close;
-      default:
+        return Icons.cancel;
+      case NotificationStatus.scheduled:
         return Icons.schedule;
     }
   }
 
-  String _formatDateTime(DateTime dateTime) {
-    final now = DateTime.now();
-    if (_isSameDay(dateTime, now)) {
-      return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+  String _getStatusText(NotificationStatus status) {
+    switch (status) {
+      case NotificationStatus.completed:
+        return 'ออกกำลังเสร็จสิ้น';
+      case NotificationStatus.snoozed:
+        return 'เลื่อนการแจ้งเตือน';
+      case NotificationStatus.dismissed:
+        return 'ยกเลิกการแจ้งเตือน';
+      case NotificationStatus.scheduled:
+        return 'รอการแจ้งเตือน';
     }
-    return '${dateTime.day}/${dateTime.month} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 
-  void _startImmediateSession(BuildContext context) {
-    // TODO: Implement immediate session start
-    Get.toNamed(AppRoutes.todo);
+  // Action methods
+  Future<void> _refreshData() async {
+    await statisticsController.loadTodayStatistics();
+    notificationController.checkPendingNotifications();
+  }
+
+  void _startImmediateSession() {
+    Get.toNamed(AppRoutes.TODO);
+  }
+
+  void _startSessionFromNotification(NotificationSession session) {
+    Get.toNamed(AppRoutes.TODO, arguments: session);
   }
 }

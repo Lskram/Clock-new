@@ -1,13 +1,8 @@
 targets:
   $default:
     builders:
-      hive_generator:hive_generator:
+      hive_generator|hive:
+        options:
+          auto_register: false
         generate_for:
           - lib/models/*.dart
-        options:
-          auto_dispose: false
-      build_runner|build_runner:
-        generate_for:
-          - lib/**
-        options:
-          delete_conflicting_outputs: true

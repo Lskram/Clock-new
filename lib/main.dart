@@ -1,25 +1,29 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:timezone/data/latest.dart' as tz;
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 
-// Models and Adapters
-import 'models/hive_adapters.dart';
+// Import models and their generated adapters
+import 'models/pain_point.dart';
+import 'models/treatment.dart';
+import 'models/user_settings.dart';
+import 'models/notification_session.dart';
+import 'models/break_time.dart';
 
-// Services
+// Import services
 import 'services/database_service.dart';
 import 'services/notification_service.dart';
+import 'services/random_service.dart';
 import 'services/permission_service.dart';
 
-// Controllers
+// Import controllers
 import 'controllers/app_controller.dart';
 import 'controllers/notification_controller.dart';
-import 'controllers/statistics_controller.dart';
 import 'controllers/settings_controller.dart';
+import 'controllers/statistics_controller.dart';
 
-// App
+// Import app
 import 'app.dart';
 
 void main() async {
@@ -29,56 +33,50 @@ void main() async {
     // Initialize Hive
     await Hive.initFlutter();
 
-    // Register all Hive Adapters using the centralized helper
-    HiveAdapters.registerAll();
+    // Register Hive adapters - แก้ไขปัญหา undefined function
+    Hive.registerAdapter(PainPointAdapter()); // Type ID: 0
+    Hive.registerAdapter(TreatmentAdapter()); // Type ID: 1
+    Hive.registerAdapter(UserSettingsAdapter()); // Type ID: 2
+    Hive.registerAdapter(NotificationSessionAdapter()); // Type ID: 3
+    Hive.registerAdapter(NotificationStatusAdapter()); // Type ID: 4
+    Hive.registerAdapter(BreakTimeAdapter()); // Type ID: 5
+    Hive.registerAdapter(TimeOfDayAdapter()); // Type ID: 6
 
-    // Initialize timezone
+    print('Hive adapters registered successfully');
+
+    // Initialize timezone data
     tz.initializeTimeZones();
 
-    // Initialize services
-    await _initializeServices();
+    // Initialize Android Alarm Manager (Android only)
+    await AndroidAlarmManager.initialize();
 
-    // Set system UI
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-      ),
-    );
-
-    print('App initialization completed successfully');
+    print('All services initialized');
   } catch (e) {
-    debugPrint('Error during app initialization: $e');
+    print('Error during initialization: $e');
   }
 
-  runApp(MyApp());
+  // Initialize services and controllers
+  await _initializeServices();
 
-  print('App started');
+  runApp(const MyApp());
 }
 
 Future<void> _initializeServices() async {
-  try {
-    // Initialize and register services
-    final settingsController = SettingsController();
-    Get.put<SettingsController>(settingsController, permanent: true);
+  // Initialize database service first
+  final databaseService = DatabaseService();
+  await databaseService.initialize();
+  Get.put(databaseService, permanent: true);
 
-    final databaseService = DatabaseService();
-    await databaseService.initialize();
-    Get.put<DatabaseService>(databaseService, permanent: true);
+  // Initialize other services
+  Get.put(NotificationService(), permanent: true);
+  Get.put(RandomService(), permanent: true);
+  Get.put(PermissionService(), permanent: true);
 
-    final permissionService = PermissionService();
-    Get.put<PermissionService>(permissionService, permanent: true);
+  // Initialize controllers
+  Get.put(AppController(), permanent: true);
+  Get.put(NotificationController(), permanent: true);
+  Get.put(SettingsController(), permanent: true); // แก้ไขปัญหา undefined
+  Get.put(StatisticsController(), permanent: true);
 
-    final notificationService = NotificationService();
-    await notificationService.initialize();
-    Get.put<NotificationService>(notificationService, permanent: true);
-
-    // Initialize controllers
-    Get.put<AppController>(AppController(), permanent: true);
-    Get.put<NotificationController>(NotificationController(), permanent: true);
-    Get.put<StatisticsController>(StatisticsController(), permanent: true);
-  } catch (e) {
-    debugPrint('Error initializing services: $e');
-    rethrow;
-  }
+  print('All services and controllers initialized');
 }

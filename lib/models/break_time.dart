@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import '../utils/constants.dart';
+
+part 'break_time.g.dart';
 
 @HiveType(typeId: 5)
 class BreakTime extends HiveObject {
@@ -10,131 +13,197 @@ class BreakTime extends HiveObject {
   String name;
 
   @HiveField(2)
-  TimeOfDay startTime;
+  String? description;
 
   @HiveField(3)
-  TimeOfDay endTime;
+  TimeOfDay startTime;
 
   @HiveField(4)
-  bool isEnabled;
+  TimeOfDay endTime;
 
   @HiveField(5)
-  bool blockNotifications;
+  bool isEnabled;
 
   @HiveField(6)
-  List<int> activeDays; // 1=Monday, 7=Sunday
+  List<int> weekdays; // 1-7 (Monday to Sunday)
+
+  @HiveField(7)
+  DateTime createdAt;
+
+  @HiveField(8)
+  DateTime updatedAt;
 
   BreakTime({
     required this.id,
     required this.name,
+    this.description,
     required this.startTime,
     required this.endTime,
     this.isEnabled = true,
-    this.blockNotifications = true,
-    this.activeDays = const [1, 2, 3, 4, 5],
-  });
+    this.weekdays = const [1, 2, 3, 4, 5], // Monday to Friday
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  })  : createdAt = createdAt ?? DateTime.now(),
+        updatedAt = updatedAt ?? DateTime.now();
 
-  factory BreakTime.create({
-    required String name,
-    required TimeOfDay startTime,
-    required TimeOfDay endTime,
-    bool isEnabled = true,
-    bool blockNotifications = true,
-    List<int>? activeDays,
-  }) {
-    final id = 'break_${DateTime.now().millisecondsSinceEpoch}';
-    return BreakTime(
-      id: id,
-      name: name,
-      startTime: startTime,
-      endTime: endTime,
-      isEnabled: isEnabled,
-      blockNotifications: blockNotifications,
-      activeDays: activeDays ?? [1, 2, 3, 4, 5],
-    );
+  // Factory method for creating default break times
+  static List<BreakTime> getDefaultBreakTimes() {
+    return [
+      BreakTime(
+        id: 'lunch',
+        name: 'พักกลางวัน',
+        description: 'พักกลางวันสำหรับรับประทานอาหาร',
+        startTime: const TimeOfDay(hour: 12, minute: 0),
+        endTime: const TimeOfDay(hour: 13, minute: 0),
+        isEnabled: true,
+        weekdays: const [1, 2, 3, 4, 5], // Monday to Friday
+      ),
+      BreakTime(
+        id: 'afternoon',
+        name: 'พักบ่าย',
+        description: 'พักช่วงบ่ายสำหรับผ่อนคลาย',
+        startTime: const TimeOfDay(hour: 15, minute: 0),
+        endTime: const TimeOfDay(hour: 15, minute: 15),
+        isEnabled: true,
+        weekdays: const [1, 2, 3, 4, 5],
+      ),
+    ];
   }
 
+  // Copy with method
   BreakTime copyWith({
+    String? id,
     String? name,
+    String? description,
     TimeOfDay? startTime,
     TimeOfDay? endTime,
     bool? isEnabled,
-    bool? blockNotifications,
-    List<int>? activeDays,
+    List<int>? weekdays,
   }) {
     return BreakTime(
-      id: id,
+      id: id ?? this.id,
       name: name ?? this.name,
+      description: description ?? this.description,
       startTime: startTime ?? this.startTime,
       endTime: endTime ?? this.endTime,
       isEnabled: isEnabled ?? this.isEnabled,
-      blockNotifications: blockNotifications ?? this.blockNotifications,
-      activeDays: activeDays ?? List.from(this.activeDays),
+      weekdays: weekdays ?? List<int>.from(this.weekdays),
+      createdAt: createdAt,
+      updatedAt: DateTime.now(),
     );
   }
 
+  // Check if current time is within this break time
+  bool isTimeInRange(TimeOfDay currentTime) {
+    if (!isEnabled) return false;
+
+    final currentMinutes = currentTime.hour * 60 + currentTime.minute;
+    final startMinutes = startTime.hour * 60 + startTime.minute;
+    final endMinutes = endTime.hour * 60 + endTime.minute;
+
+    return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+  }
+
+  // Check if break time is active today
   bool isActiveToday() {
     final today = DateTime.now().weekday;
-    return isEnabled && activeDays.contains(today);
+    return isEnabled && weekdays.contains(today);
   }
 
-  bool isCurrentlyActive() {
-    if (!isActiveToday()) return false;
-
-    final now = TimeOfDay.now();
-    final nowInMinutes = now.hour * 60 + now.minute;
-    final startInMinutes = startTime.hour * 60 + startTime.minute;
-    final endInMinutes = endTime.hour * 60 + endTime.minute;
-
-    if (startInMinutes <= endInMinutes) {
-      // Same day break
-      return nowInMinutes >= startInMinutes && nowInMinutes <= endInMinutes;
-    } else {
-      // Overnight break
-      return nowInMinutes >= startInMinutes || nowInMinutes <= endInMinutes;
-    }
+  // Check if break time is active on specific weekday
+  bool isActiveOnWeekday(int weekday) {
+    return isEnabled && weekdays.contains(weekday);
   }
 
+  // Get duration of break time in minutes
+  int get durationInMinutes {
+    final startMinutes = startTime.hour * 60 + startTime.minute;
+    final endMinutes = endTime.hour * 60 + endTime.minute;
+    return endMinutes - startMinutes;
+  }
+
+  // Get duration as Duration object
   Duration get duration {
-    final startInMinutes = startTime.hour * 60 + startTime.minute;
-    final endInMinutes = endTime.hour * 60 + endTime.minute;
-
-    int durationInMinutes;
-    if (startInMinutes <= endInMinutes) {
-      durationInMinutes = endInMinutes - startInMinutes;
-    } else {
-      // Overnight break
-      durationInMinutes = (24 * 60 - startInMinutes) + endInMinutes;
-    }
-
     return Duration(minutes: durationInMinutes);
   }
 
-  String get formattedDuration {
-    final dur = duration;
-    final hours = dur.inHours;
-    final minutes = dur.inMinutes % 60;
+  // Check if break time is valid (end time after start time)
+  bool get isValid {
+    final startMinutes = startTime.hour * 60 + startTime.minute;
+    final endMinutes = endTime.hour * 60 + endTime.minute;
+    return endMinutes > startMinutes && weekdays.isNotEmpty;
+  }
 
-    if (hours > 0) {
-      return '${hours}ชั่วโมง ${minutes}นาที';
+  // Format time range as string
+  String get timeRangeString {
+    final startFormatted = startTime.format(null);
+    final endFormatted = endTime.format(null);
+    return '$startFormatted - $endFormatted';
+  }
+
+  // Get weekdays as string
+  String get weekdaysString {
+    const weekdayNames = {
+      1: 'จ',
+      2: 'อ',
+      3: 'พ',
+      4: 'พฤ',
+      5: 'ศ',
+      6: 'ส',
+      7: 'อา',
+    };
+
+    if (weekdays.length == 7) {
+      return 'ทุกวัน';
+    } else if (weekdays.length == 5 &&
+        weekdays.contains(1) &&
+        weekdays.contains(2) &&
+        weekdays.contains(3) &&
+        weekdays.contains(4) &&
+        weekdays.contains(5)) {
+      return 'จันทร์-ศุกร์';
+    } else if (weekdays.length == 2 &&
+        weekdays.contains(6) &&
+        weekdays.contains(7)) {
+      return 'เสาร์-อาทิตย์';
+    } else {
+      return weekdays.map((day) => weekdayNames[day] ?? '').join(', ');
     }
-    return '${minutes}นาที';
   }
 
-  String get formattedTime {
-    return '${_formatTimeOfDay(startTime)} - ${_formatTimeOfDay(endTime)}';
+  // Enable/disable break time
+  void enable() {
+    isEnabled = true;
+    updatedAt = DateTime.now();
+    save();
   }
 
-  String _formatTimeOfDay(TimeOfDay time) {
-    final hour = time.hour.toString().padLeft(2, '0');
-    final minute = time.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
+  void disable() {
+    isEnabled = false;
+    updatedAt = DateTime.now();
+    save();
   }
 
+  // Update break time
+  void updateTime(TimeOfDay newStartTime, TimeOfDay newEndTime) {
+    startTime = newStartTime;
+    endTime = newEndTime;
+    updatedAt = DateTime.now();
+    save();
+  }
+
+  void updateWeekdays(List<int> newWeekdays) {
+    weekdays = List<int>.from(newWeekdays);
+    updatedAt = DateTime.now();
+    save();
+  }
+
+  // Convert to/from JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'name': name,
+      'description': description,
       'startTime': {
         'hour': startTime.hour,
         'minute': startTime.minute,
@@ -144,8 +213,9 @@ class BreakTime extends HiveObject {
         'minute': endTime.minute,
       },
       'isEnabled': isEnabled,
-      'blockNotifications': blockNotifications,
-      'activeDays': activeDays,
+      'weekdays': weekdays,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
     };
   }
 
@@ -153,6 +223,7 @@ class BreakTime extends HiveObject {
     return BreakTime(
       id: json['id'],
       name: json['name'],
+      description: json['description'],
       startTime: TimeOfDay(
         hour: json['startTime']['hour'],
         minute: json['startTime']['minute'],
@@ -162,46 +233,36 @@ class BreakTime extends HiveObject {
         minute: json['endTime']['minute'],
       ),
       isEnabled: json['isEnabled'] ?? true,
-      blockNotifications: json['blockNotifications'] ?? true,
-      activeDays: List<int>.from(json['activeDays'] ?? [1, 2, 3, 4, 5]),
+      weekdays: List<int>.from(json['weekdays'] ?? [1, 2, 3, 4, 5]),
+      createdAt: DateTime.parse(json['createdAt']),
+      updatedAt: DateTime.parse(json['updatedAt']),
     );
   }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is BreakTime && other.id == id;
+    return other is BreakTime &&
+        other.id == id &&
+        other.name == name &&
+        other.startTime == startTime &&
+        other.endTime == endTime &&
+        other.isEnabled == isEnabled;
   }
 
   @override
-  int get hashCode => id.hashCode;
+  int get hashCode {
+    return Object.hash(id, name, startTime, endTime, isEnabled);
+  }
 
   @override
   String toString() {
-    return 'BreakTime(id: $id, name: $name, time: $formattedTime, enabled: $isEnabled)';
-  }
-
-  // Static method to create default break times
-  static List<BreakTime> getDefaultBreakTimes() {
-    return [
-      BreakTime(
-        id: 'lunch_break',
-        name: 'พักเที่ยง',
-        startTime: const TimeOfDay(hour: 12, minute: 0),
-        endTime: const TimeOfDay(hour: 13, minute: 0),
-        isEnabled: true,
-        blockNotifications: true,
-        activeDays: [1, 2, 3, 4, 5],
-      ),
-      BreakTime(
-        id: 'afternoon_break',
-        name: 'พักบ่าย',
-        startTime: const TimeOfDay(hour: 15, minute: 0),
-        endTime: const TimeOfDay(hour: 15, minute: 15),
-        isEnabled: false,
-        blockNotifications: true,
-        activeDays: [1, 2, 3, 4, 5],
-      ),
-    ];
+    return 'BreakTime('
+        'id: $id, '
+        'name: $name, '
+        'time: $timeRangeString, '
+        'isEnabled: $isEnabled, '
+        'weekdays: $weekdaysString'
+        ')';
   }
 }
